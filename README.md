@@ -1,4 +1,4 @@
- # Manuscript Code Repository
+ # Code Repository
 
 This repository contains the scripts accompanying the publication Friedrich VD & Pennitz P et al. "Neural Network-Assisted Humanization of COVID-19 Hamster scRNAseq Data Reveals Matching Severity States in Human Disease". 
 
