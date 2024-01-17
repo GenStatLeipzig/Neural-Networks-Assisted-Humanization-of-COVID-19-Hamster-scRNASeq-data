@@ -147,6 +147,6 @@
 		- s2_B_Cells_supp.pdf				-> code: */supplement_S4/s2_make_supplements_umap.py
 
 **Description:**
-* code avaliable at github: https://github.com/GenStatLeipzig/Neural-Networks-Assisted-Humanization-of-COVID-19-Hamster-scRNASeq-data
+*this git repositoy
 
-=== End of Documentation ===
+=== Zenodo at XXXXXX ===
