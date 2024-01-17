@@ -59,6 +59,8 @@
 		- h270_1_clusterlabels_in_h228_3_seurat.txt					-> TO DO  
 		- v227_2_PR_var.csv								-> code: */VAE/input_processing/v227_2_build_anndata.ipynb									
 		- v227_2_MA_var.csv								-> code: */VAE/input_processing/v227_2_build_anndata.ipynb
+		- 227_2_PR_obs.csv								-> code: */VAE/input_processing/v227_2_build_anndata.ipynb
+		- 227_2_MA_obs.csv								-> code: */VAE/input_processing/v227_2_build_anndata.ipynb
 		- v228_1_PR_obs.csv								-> code: */VAE/input_processing/v228_1_build_anndata_object.ipynb		
 		- v228_1_MA_obs.csv								-> code: */VAE/input_processing/v228_1_build_anndata_object.ipynb
 		- v227_2_PR.h5ad								-> code: */VAE/input_processing/v227_2_build_anndata.ipynb
