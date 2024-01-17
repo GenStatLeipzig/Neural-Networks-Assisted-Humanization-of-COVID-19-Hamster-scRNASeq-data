@@ -24,5 +24,5 @@ Navigate to the respective folder to find scripts for generating the figures or 
 
 ## Issues
 
-If you encounter any issues or have questions, please open an issue in the repository
+If you encounter any issues or have questions, please open an issue in the repository.
 
