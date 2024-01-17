@@ -1,0 +1,152 @@
+=== Zenodo at XXXXXX ===
+
+**Folder Structure:**
+- **Figure_2:**
+  - V105_5_show_shift_v1.pdf 				-> code: */Figure_2/V105_umap_paper.ipynb
+  - V105_control_Neutrophils_with_umap.h5ad 		-> code: */Figure_2/105_5_umap_color.ipynb
+  - V105_infected_Neutrophils_with_umap.h5ad 		-> code: */Figure_2/105_5_umap_color.ipynb
+
+
+- **Figure_3:** 
+
+  - **cross_species_Roborovski_hamster**
+	- 228_1_B01_Non_Classical_Monocytes_model.pt 			-> code: */Figure_3/cross_species_Roborovski_hamster/B01_monos_B_NK_pr.py
+	- B05_gene_expression_Non_Classical_Monocytes_pr.csv		-> code: */Figure_3/cross_species_Roborovski_hamster/B05_save_decoded_object.py
+	- B05_meta_Non_Classical_Monocytes_pr.csv			-> code: */Figure_3/cross_species_Roborovski_hamster/B05_save_decoded_object.py
+	- controls_test_pp_228_1_B01_Non_Classical_Monocytes.h5ad 	-> code: */Figure_3/cross_species_Roborovski_hamster/B01_monos_B_NK_pr.py
+	- controls_train_pp_228_1_B01_Non_Classical_Monocytes.h5ad 	-> code: */Figure_3/cross_species_Roborovski_hamster/B01_monos_B_NK_pr.py
+	- umap_train_test_B02_228_1_Non_Classical_Monocytes.pdf		-> code: */Figure_3/cross_species_Roborovski_hamster/B02_pr.py	
+
+  - **cross_species_Syrian_hamster**
+	- 228_1_B01_Neutrophils_model.pt				-> code: */Figure_3/cross_species_Syrian_hamster/B01_monos_B_NK_pr.py
+	- B05_gene_expression_Neutrophils_ma.csv			-> code: */Figure_3/cross_species_Syrian_hamster/B05_save_decoded_object.py
+	- B05_meta_Neutrophils_ma.csv					-> code: */Figure_3/cross_species_Syrian_hamster/B05_save_decoded_object.py
+	- controls_test_pp_228_1_B01_Neutrophils.h5ad			-> code: */Figure_3/cross_species_Syrian_hamster/B01_Neutrophils_ma.py			
+	- controls_train_pp_228_1_B01_Neutrophils.h5ad			-> code: */Figure_3/cross_species_Syrian_hamster/B01_Neutrophils_ma.py
+	- umap_train_test_B04_228_1_Neutrophils.pdf   			-> code: */Figure_3/cross_species_Syrian_hamster/B04_neutro_paper.ipynb
+
+  - **single_species_Roborovski_hamster**
+	- H0_01_model_Non_Classical_Monocytes.pt			-> code: */Figure_3/single_species_Roborovski_hamster/HO_01_v228_1_Non_Classic_Monocytes_pr.py
+	- H0_01_test_Non_Classical_Monocytes_.h5ad			-> code: */Figure_3/single_species_Roborovski_hamster/HO_01_v228_1_Non_Classic_Monocytes_pr.py
+	- H0_01_train_Non_Classical_Monocytes_.h5ad			-> code: */Figure_3/single_species_Roborovski_hamster/HO_01_v228_1_Non_Classic_Monocytes_pr.py
+	- H0_02_train_test_umap_pr_Non_Classical_Monocytes.pdf		-> code: */Figure_3/single_species_Roborovski_hamster/HO_02_v228_1_Non_Classical_Monocytes_pp.ipynb														
+	- HO_03_gene_expression_Non_Classical_Monocytes_pr.csv		-> code: */Figure_3/single_species_Roborovski_hamster/HO_03_v228_1_Non_Classical_Monocytes_pp.ipynb
+	- HO_03_meta_Non_Classical_Monocytes_pr.csv			-> code: */Figure_3/single_species_Roborovski_hamster/HO_03_v228_1_Non_Classical_Monocytes_pp.ipynb 
+
+  - **single_species_Syrian_hamster**
+	- H0_01_model_Neutrophils.pt					-> code: */Figure_3/single_species_Syrian_hamster/HO_01_v228_1_Neutrophils_pp.py
+	- H0_01_test_Neutrophils.h5ad					-> code: */Figure_3/single_species_Syrian_hamster/HO_01_v228_1_Neutrophils_pp.py
+	- H0_01_train_Neutrophils.h5ad					-> code: */Figure_3/single_species_Syrian_hamster/HO_01_v228_1_Neutrophils_pp.py
+	- H0_02_train_test_umapNeutrophils.pdf				-> code: */Figure_3/single_species_Syrian_hamster/HO_02_v228_1_Neutrophils_pp.ipynb
+	- HO_03_gene_expression_Neutrophils_ma.csv			-> code: */Figure_3/single_species_Syrian_hamster/HO_03_v228_1_Neutrophils_pp.ipynb
+	- HO_03_meta_Neutrophils_ma.csv					-> code: */Figure_3/single_species_Syrian_hamster/HO_03_v228_1_Neutrophils_pp.ipynb
+  
+
+- **Figure_4:**
+  - LOK2_v228_1_figure_2_ma.pdf		-> code: */Figure_4/LOK2_v228_1_VAE_figure_2.ipynb
+  - LOK2_v228_1_figure_2_pr.pdf		-> code: */Figure_4/LOK2_v228_1_VAE_figure_2.ipynb
+  
+- **VAE:**
+	- **VAE_input_data**
+		- h228_1_qc_integrated_rpca_cellanno_FILTEREDqc_FILTEREDpureCells.txt 		-> TO DO
+		- h228_2_qc_integrated_rpca_cellanno_FILTEREDqc_FILTEREDpureCells.txt		-> TO DO
+		- h227_2_humanPR_rpca_FILTERED_JOINED_gxmatrix.txt				-> TO DO
+		- h227_2_humanPR_rpca_FILTERED_JOINED_featureanno.txt				-> TO DO
+		- h227_2_humanPR_rpca_FILTERED_JOINED_cellanno.txt				-> TO DO
+		- h227_2_humanMA_rpca_FILTERED_JOINED_cellanno.txt				-> TO DO
+		- h227_2_humanMA_rpca_FILTERED_JOINED_featureanno.txt				-> TO DO
+		- h227_2_humanMA_rpca_FILTERED_JOINED_gxmatrix.txt				-> TO DO
+		- h270_1_clusterlabels_in_h228_3_seurat.txt					-> TO DO  
+		- v227_2_PR_var.csv								-> code: */VAE/input_processing/v227_2_build_anndata.ipynb									
+		- v227_2_MA_var.csv								-> code: */VAE/input_processing/v227_2_build_anndata.ipynb
+		- v228_1_PR_obs.csv								-> code: */VAE/input_processing/v228_1_build_anndata_object.ipynb		
+		- v228_1_MA_obs.csv								-> code: */VAE/input_processing/v228_1_build_anndata_object.ipynb
+		- v227_2_PR.h5ad								-> code: */VAE/input_processing/v227_2_build_anndata.ipynb
+		- v227_2_MA.h5ad								-> code: */VAE/input_processing/v227_2_build_anndata.ipynb
+  
+	- **VAE_model_selection**
+		- v13_type1_h270_ma_Immature_Neutrophils_acurate.csv		-> code: */VAE/model_selection/v13_pillai_imm_neutros_type1_h270.py
+		- v13_type1_h270_pr_Immature_Neutrophils_acurate.csv		-> code: */VAE/model_selection/v13_pillai_imm_neutros_type1_h270.py
+		- v15_best_models_B4.csv					-> code: */VAE/model_selection/v15_summarize_scores.py
+		- v14_ma_all_pillai.csv						-> code: */VAE/model_selection/	v14_summarize_pillai_neutros.py
+		- v14_pr_all_pillai.csv						-> code: */VAE/model_selection/v14_summarize_pillai_neutros.py
+		- v13_pr_Neutrophils_acurate.csv 				-> code: */VAE/model_selection/v13_pillai_neutros.py				
+		- v13_ma_Neutrophils_acurate.csv				-> code: */VAE/model_selection/v13_pillai_neutros.py  
+		- v13_pr_Non_Classical_Monocytes.csv				-> code: */VAE/model_selection/v13_pillai.py
+		- v13_pr_NK_Cells.csv						-> code: */VAE/model_selection/v13_pillai.py
+		- v13_pr_CD8+_T_Cells.csv					-> code: */VAE/model_selection/v13_pillai.py
+		- v13_pr_B_Cells.csv						-> code: */VAE/model_selection/v13_pillai.py
+		- v13_pr_Classical_Monocytes.csv				-> code: */VAE/model_selection/v13_pillai.py
+		- v13_pr_CD4+_T_Cells.csv					-> code: */VAE/model_selection/v13_pillai.py
+		- v13_ma_Non_Classical_Monocytes.csv				-> code: */VAE/model_selection/v13_pillai.py
+		- v13_ma_NK_Cells.csv						-> code: */VAE/model_selection/v13_pillai.py
+		- v13_ma_CD8+_T_Cells.csv					-> code: */VAE/model_selection/v13_pillai.py
+		- v13_ma_B_Cells.csv						-> code: */VAE/model_selection/v13_pillai.py
+		- v13_ma_Classical_Monocytes.csv				-> code: */VAE/model_selection/v13_pillai.py
+		- v13_ma_CD4+_T_Cells.csv					-> code: */VAE/model_selection/v13_pillai.py   
+	- **VAE_trained_models**
+		- **Roborovski_hamster**
+			- **Immature_Neutrophils_acurate** 			-> code: */VAE/Roborovski_hamster/v228_1_run_VAE_pr_Immature_Neutrophils_acurate_type1_h270.py
+			- **Non_Classical_Monocytes**				-> code: */VAE/Roborovski_hamster/v228_1_run_VAE_Classical_Monocytes.py
+			- **NK_Cells**						-> code: */VAE/Roborovski_hamster/v228_1_run_VAE_NK_Cells.py
+			- **Neutrophils_acurate**				-> code: */VAE/Roborovski_hamster/v228_1_run_VAE_Neutrophils_acurate.py
+			- **Classical_Monocytes**				-> code: */VAE/Roborovski_hamster/v228_1_run_VAE_Classical_Monocytes.py
+			- **CD8+_T_Cells**					-> code: */VAE/Roborovski_hamster/v228_1_run_VAE_CD8.py
+			- **CD4+_T_Cells**					-> code: */VAE/Roborovski_hamster/v228_1_run_VAE_CD4.py
+			- **B_Cells**						-> code: */VAE/Roborovski_hamster/v228_1_run_VAE_B_Cells.py
+		- **Syrian_hamster**
+			- **Immature_Neutrophils_acurate**			-> code: */VAE/Syrian_hamster/v228_1_run_VAE_ma_Immature_Neutrophils_acurate_type1_h270.py
+			- **Non_Classical_Monocytes**				-> code: */VAE/Syrian_hamster/v228_1_run_VAE_Non_Classical_Monocytes.py
+			- **NK_Cells**						-> code: */VAE/Syrian_hamster/v228_1_run_VAE_NK_Cells.py
+			- **Neutrophils_acurate**				-> code: */VAE/Syrian_hamster/v228_1_run_VAE_ma_Neutrophils_acurate.py
+			- **Classical_Monocytes**				-> code: */VAE/Syrian_hamster/v228_1_run_VAE_Classical_Monocytes.py
+			- **CD8+_T_Cells**					-> code: */VAE/Syrian_hamster/v228_1_run_VAE_CD8.py
+			- **CD4+_T_Cells**					-> code: */VAE/Syrian_hamster/v228_1_run_VAE_CD4.py
+			- **B_Cells**						-> code: */VAE/Syrian_hamster/v228_1_run_VAE_B_Cells.py
+
+- **supplement_S3**
+	- Roborovski_hamster
+		- **Non_Classical_Monocytes** 		-> code: */Figure_3/cross_species_Roborovski_hamster/B01_monos_B_NK_pr.py; */Figure_3/cross_species_Roborovski_hamster/B02_pr.py 
+		- **NK_Cells**				-> code: */Figure_3/cross_species_Roborovski_hamster/B01_monos_B_NK_pr.py; */Figure_3/cross_species_Roborovski_hamster/B02_pr.py
+		- **Neutrophils**			-> code: */supplement_S3_intermediate/Roborovski_hamster/B01_Neutrophils_pr.py; */Figure_3/cross_species_Roborovski_hamster/B02_pr.py 
+		- **CD8+_T_Cells**			-> code: */supplement_S3_intermediate/Roborovski_hamster/B01_CD4_CD8_pr.py; */Figure_3/cross_species_Roborovski_hamster/B02_pr.py
+		- **CD4+_T_Cells**			-> code: */supplement_S3_intermediate/Roborovski_hamster/B01_CD4_CD8_pr.py; */Figure_3/cross_species_Roborovski_hamster/B02_pr.py;  										
+		- **B_Cells**				-> code: */Figure_3/cross_species_Roborovski_hamster/B01_monos_B_NK_pr.py; */Figure_3/cross_species_Roborovski_hamster/B02_pr.py  
+		- **Immature_Neutrophils_type1**	-> code: */supplement_S3_intermediate/Roborovski_hamster/B01_Immature_Neutrophils_pr_type1_h270.py; */supplement_S3_intermediate/Roborovski_hamster/B02_pr_Immature_Neutrophils_type1.py
+		- **Classical_Monocytes**		-> code: */Figure_3/cross_species_Roborovski_hamster/B01_monos_B_NK_pr.py; */Figure_3/cross_species_Roborovski_hamster/B02_pr.py
+		- **decoded_objects_v2** 		-> code: */supplement_S3_intermediate/Roborovski_hamster/B05_save_decoded_object.py;  */supplement_S3_intermediate/Roborovski_hamster/B05_save_decoded_object_type1.py
+	- Syrian_hamster
+		- **Non_Classical_Monocytes** 		-> code: */supplement_S3_intermediate/Syrian_hamster/B01_monos_B_NK_pr.py; */supplement_S3_intermediate/Syrian_hamster/B02_ma.py 
+		- **NK_Cells**				-> code: */supplement_S3_intermediate/Syrian_hamster/B01_monos_B_NK_pr.py; */supplement_S3_intermediate/Syrian_hamster/B02_ma.py 
+		- **Neutrophils**			-> code: */Figure_3/cross_species_Syrian_hamster/B01_monos_B_NK_pr.py; */Figure_3/cross_species_Syrian_hamster/B04_neutro_paper.ipynb
+		- **CD8+_T_Cells**			-> code: */supplement_S3_intermediate/Syrian_hamster/B01_CD4_CD8_ma.py; */supplement_S3_intermediate/Syrian_hamster/B02_ma.py
+		- **CD4+_T_Cells**			-> code: */supplement_S3_intermediate/Syrian_hamster/B01_CD4_CD8_ma.py; */supplement_S3_intermediate/Syrian_hamster/B02_ma.py
+		- **B_Cells**				-> code: */supplement_S3_intermediate/Syrian_hamster/B01_monos_B_NK_pr.py; */supplement_S3_intermediate/Syrian_hamster/B02_ma.py
+		- **Immature_Neutrophils_type1**	-> code: */supplement_S3_intermediate/Syrian_hamster/B01_Immature_Neutrophils_type1_h270.py; */supplement_S3_intermediate/Syrian_hamster/B02_ma_Immature_Neutrophils_type1.py
+		- **Classical_Monocytes**		-> code: */supplement_S3_intermediate/Syrian_hamster/B01_monos_B_NK_pr.py; */supplement_S3_intermediate/Syrian_hamster/B02_ma.py 
+		- **decoded_objects_v2**		-> code: */supplement_S3_intermediate/Syrian_hamster/B05_save_decoded_object.py; */supplement_S3_intermediate/Syrian_hamster/B05_save_decoded_object_type1.py
+
+- **supplement_S4**
+	- Roborovski_hamster
+		- s2_Non_Classical_Monocytes_supp.pdf 		-> code: */supplement_S4/s2_make_supplements_umap.py
+		- s2_NK_Cells_supp.pdf				-> code: */supplement_S4/s2_make_supplements_umap.py
+		- s2_Neutrophils_acurate_supp.pdf		-> code: */supplement_S4/s2_make_supplements_umap.py
+		- s2_Immature_Neutrophils_acurate_supp.pdf	-> code: */supplement_S4/s2_make_supplements_umap.py
+		- s2_Classical_Monocytes_supp.pdf		-> code: */supplement_S4/s2_make_supplements_umap.py
+		- s2_CD8+_T_Cells_supp.pdf			-> code: */supplement_S4/s2_make_supplements_umap.py
+		- s2_CD4+_T_Cells_supp.pdf			-> code: */supplement_S4/s2_make_supplements_umap.py
+		- s2_B_Cells_supp.pdf				-> code: */supplement_S4/s2_make_supplements_umap.py
+	- Syrian_hamster
+		- s2_Non_Classical_Monocytes_supp.pdf 		-> code: */supplement_S4/s2_make_supplements_umap.py
+		- s2_NK_Cells_supp.pdf				-> code: */supplement_S4/s2_make_supplements_umap.py
+		- s2_Neutrophils_acurate_supp.pdf		-> code: */supplement_S4/s2_make_supplements_umap.py
+		- s2_Immature_Neutrophils_acurate_supp.pdf	-> code: */supplement_S4/s2_make_supplements_umap.py
+		- s2_Classical_Monocytes_supp.pdf		-> code: */supplement_S4/s2_make_supplements_umap.py
+		- s2_CD8+_T_Cells_supp.pdf			-> code: */supplement_S4/s2_make_supplements_umap.py
+		- s2_CD4+_T_Cells_supp.pdf			-> code: */supplement_S4/s2_make_supplements_umap.py
+		- s2_B_Cells_supp.pdf				-> code: */supplement_S4/s2_make_supplements_umap.py
+
+**Description:**
+* code avaliable at github: https://github.com/GenStatLeipzig/Neural-Networks-Assisted-Humanization-of-COVID-19-Hamster-scRNASeq-data
+
+=== End of Documentation ===
