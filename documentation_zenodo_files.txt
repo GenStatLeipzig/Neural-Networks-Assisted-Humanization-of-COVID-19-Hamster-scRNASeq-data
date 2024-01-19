@@ -12,7 +12,6 @@
 
 
 - **Figure_3:** 
-
   - **cross_species_Roborovski_hamster**
 	- 228_1_B01_Non_Classical_Monocytes_model.pt 			-> code: */Figure_3/cross_species_Roborovski_hamster/B01_monos_B_NK_pr.py
 	- B05_gene_expression_Non_Classical_Monocytes_pr.csv		-> code: */Figure_3/cross_species_Roborovski_hamster/B05_save_decoded_object.py
@@ -128,7 +127,7 @@
 		- **NK_Cells**				-> code: */Figure_3/cross_species_Roborovski_hamster/B01_monos_B_NK_pr.py; */Figure_3/cross_species_Roborovski_hamster/B02_pr.py
 		- **Neutrophils**			-> code: */supplement_S3_intermediate/Roborovski_hamster/B01_Neutrophils_pr.py; */Figure_3/cross_species_Roborovski_hamster/B02_pr.py 
 		- **CD8+_T_Cells**			-> code: */supplement_S3_intermediate/Roborovski_hamster/B01_CD4_CD8_pr.py; */Figure_3/cross_species_Roborovski_hamster/B02_pr.py
-		- **CD4+_T_Cells**			-> code: */supplement_S3_intermediate/Roborovski_hamster/B01_CD4_CD8_pr.py; */Figure_3/cross_species_Roborovski_hamster/B02_pr.py;  										
+		- **CD4+_T_Cells**			-> code: */supplement_S3_intermediate/Roborovski_hamster/B01_CD4_CD8_pr.py; */Figure_3/cross_species_Roborovski_hamster/B02_pr.py  							
 		- **B_Cells**				-> code: */Figure_3/cross_species_Roborovski_hamster/B01_monos_B_NK_pr.py; */Figure_3/cross_species_Roborovski_hamster/B02_pr.py  
 		- **Immature_Neutrophils_type1**	-> code: */supplement_S3_intermediate/Roborovski_hamster/B01_Immature_Neutrophils_pr_type1_h270.py; */supplement_S3_intermediate/Roborovski_hamster/B02_pr_Immature_Neutrophils_type1.py
 		- **Classical_Monocytes**		-> code: */Figure_3/cross_species_Roborovski_hamster/B01_monos_B_NK_pr.py; */Figure_3/cross_species_Roborovski_hamster/B02_pr.py
