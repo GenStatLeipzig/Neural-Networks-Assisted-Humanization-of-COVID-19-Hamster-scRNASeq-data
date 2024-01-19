@@ -17,6 +17,8 @@ This repository contains the scripts accompanying the publication Friedrich VD &
 - **Figure7_FigureS6_and_FigureS7**: Scripts for generating Figure 7, Figure S6 and Figure S7.
 - **Supplemental_Figure1**: Scripts for generating Figure S1.
 - **supplement_S3_intermediate**:  Scripts for generating preliminary outputs for Figure S3.
+   - **Roborovski_hamster**: Scripts for Roborvski hamster and human data.
+   - **Syrian_hamster**: Scripts for Syrian hamster and human data.
 - **Supplemental_Figure3**: Scripts for generating Figure S3.
 - **supplement_S4**: Scripts for generating Figure S4.
 - **helper_VAE**: Helper functions for VAE disease state matching.
