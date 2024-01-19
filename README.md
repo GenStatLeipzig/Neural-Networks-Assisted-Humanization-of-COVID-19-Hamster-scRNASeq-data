@@ -5,21 +5,21 @@ This repository contains the scripts accompanying the publication Friedrich VD &
 ## Folder Structure
 
 - **Figure1_and_FigureS2**: Scripts for generating Figure 1 and and Figure S2.
-- **Figure_2**: Scripts for generating Figure 2.
-- **Figure_3**: Scripts for generating Figure 3.
+- **Figure2**: Scripts for generating Figure 2.
+- **Figure3**: Scripts for generating Figure 3.
      - **cross_species_Roborovski_hamster**: Scripts for generating Figure 3A.
      - **cross_species_Syrian_hamster**: Scripts for generating Figure 3B.
      - **single_species_Syrian_hamster**: Scripts for generating Figure 3C.
      - **single_species_Roborovski_hamster**: Scripts for generating Figure 3D.
-- **Figure_4**: Scripts for generating Figure 4.
+- **Figure4**: Scripts for generating Figure 4.
 - **Figure5_and_FigureS5A,B**: Scripts for generating Figure 5 and and Figure S5A,B.
 - **Figure6_and_FigureS5C**: Scripts for generating Figure 6 and and Figure S5C.
 - **Figure7_FigureS6_and_FigureS7**: Scripts for generating Figure 7, Figure S6 and Figure S7.
-- **Figure_S1**: Scripts for generating Figure S1.
-- **Figure_S3**:  Scripts for generating Figure S3.
+- **FigureS1**: Scripts for generating Figure S1.
+- **FigureS3**:  Scripts for generating Figure S3.
    - **Roborovski_hamster**: Scripts for generating preliminary output for Roborovski hamster and human data for Figure S3.
    - **Syrian_hamster**: Scripts for generating preliminary output for Syrian hamster and human data for Figure S3.
-- **Figure_S4**: Scripts for generating Figure S4.
+- **FigureS4**: Scripts for generating Figure S4.
 - **VAE**: Scripts for model training and processing steps within VAE disease state matching.
    - **Roborovski_hamster**: Scripts for training VAE model for Roborovski hamster and human data at cell type-level.
    - **Syrian_hamster**: Scripts for training VAE model for Syrian hamster and human data at cell type-level.
