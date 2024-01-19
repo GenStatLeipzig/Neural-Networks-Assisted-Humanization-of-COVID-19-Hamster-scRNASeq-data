@@ -1,6 +1,10 @@
 === Zenodo at XXXXXX ===
 
 **Folder Structure:**
+
+-**Figure1_and_FigureS2:**
+  - h228_3_qc_integrated_rpca_cellanno_FILTEREDqc_FILTEREDpureCells.txt.gz 		-> code: TO DO
+
 - **Figure_2:**
   - V105_5_show_shift_v1.pdf 				-> code: */Figure_2/V105_umap_paper.ipynb
   - V105_control_Neutrophils_with_umap.h5ad 		-> code: */Figure_2/105_5_umap_color.ipynb
@@ -45,6 +49,18 @@
 - **Figure_4:**
   - LOK2_v228_1_figure_2_ma.pdf		-> code: */Figure_4/LOK2_v228_1_VAE_figure_2.ipynb
   - LOK2_v228_1_figure_2_pr.pdf		-> code: */Figure_4/LOK2_v228_1_VAE_figure_2.ipynb
+
+- **Figure5_and_FigureS5A,B**
+  - h245_7_eta1_tab.txt								-> code: TO DO
+  - h245_7_inputdata_plot_h245_7_overlapping_pathways_no4u5_smaller.txt.gz	-> code: TO DO
+  - h265_8_plotdata_FDR20_dotplot_effectsizes.txt.gz				-> code: TO DO
+
+- **Figure6_and_FigureS5C**
+  - h265_8_plotdata_top5_genes_same_direction_no4u5.txt.gz			-> code: TO DO
+
+- **Figure7_FigureS6_and_FigureS7**
+  - h245_4_de_list.xlsx								-> code: TO DO
+
   
 - **VAE:**
 	- **VAE_input_data**
