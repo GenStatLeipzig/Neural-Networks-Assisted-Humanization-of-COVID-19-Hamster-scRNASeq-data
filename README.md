@@ -7,6 +7,10 @@ This repository contains the scripts accompanying the publication Friedrich VD &
 - **Figure1_and_FigureS2**: Scripts for generating Figure 1 and and Figure S2.
 - **Figure_2**: Scripts for generating Figure 2.
 - **Figure_3**: Scripts for generating Figure 3.
+     - **cross_species_Roborovski_hamster**: Scripts for generating Figure 3A.
+     - **cross_species_Syrian_hamster**: Scripts for generating Figure 3B.
+     - **single_species_Syrian_hamster**: Scripts for generating Figure 3C.
+     - **single_species_Roborovski_hamster**: Scripts for generating Figure 3D.
 - **Figure_4**: Scripts for generating Figure 4.
 - **Figure5_and_FigureS5A,B**: Scripts for generating Figure 5 and and Figure S5A,B.
 - **Figure6_and_FigureS5C**: Scripts for generating Figure 6 and and Figure S5C.
