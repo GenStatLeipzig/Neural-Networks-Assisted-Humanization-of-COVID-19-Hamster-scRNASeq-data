@@ -21,6 +21,10 @@ This repository contains the scripts accompanying the publication Friedrich VD &
 - **supplement_S4**: Scripts for generating Figure S4.
 - **helper_VAE**: Helper functions for VAE disease state matching.
 - **VAE**: Scripts for model training and processing steps within VAE disease state matching.
+   - **Roborovski_hamster**: Scripts for training VAE model for Roborovski hamster and human data.
+   - **Syrian_hamster**: Scripts for training VAE model for Syrian hamster and human data.
+   - **input_processing**: Scripts for input processing in VAE pipeline.
+   - **model_selection**: Scripts for model selection.
 
 ## Usage
 
