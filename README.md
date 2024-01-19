@@ -15,18 +15,17 @@ This repository contains the scripts accompanying the publication Friedrich VD &
 - **Figure5_and_FigureS5A,B**: Scripts for generating Figure 5 and and Figure S5A,B.
 - **Figure6_and_FigureS5C**: Scripts for generating Figure 6 and and Figure S5C.
 - **Figure7_FigureS6_and_FigureS7**: Scripts for generating Figure 7, Figure S6 and Figure S7.
-- **Supplemental_Figure1**: Scripts for generating Figure S1.
-- **supplement_S3_intermediate**:  Scripts for generating preliminary outputs for Figure S3.
-   - **Roborovski_hamster**: Scripts for Roborvski hamster and human data.
-   - **Syrian_hamster**: Scripts for Syrian hamster and human data.
-- **Supplemental_Figure3**: Scripts for generating Figure S3.
-- **supplement_S4**: Scripts for generating Figure S4.
-- **helper_VAE**: Helper functions for VAE disease state matching.
+- **Figure_S1**: Scripts for generating Figure S1.
+- **Figure_S3**:  Scripts for generating Figure S3.
+   - **Roborovski_hamster**: Scripts for generating preliminary output for Roborovski hamster and human data for Figure S3.
+   - **Syrian_hamster**: Scripts for generating preliminary output for Syrian hamster and human data for Figure S3.
+- **Figure_S4**: Scripts for generating Figure S4.
 - **VAE**: Scripts for model training and processing steps within VAE disease state matching.
    - **Roborovski_hamster**: Scripts for training VAE model for Roborovski hamster and human data at cell type-level.
    - **Syrian_hamster**: Scripts for training VAE model for Syrian hamster and human data at cell type-level.
    - **input_processing**: Scripts for input processing in VAE pipeline.
    - **model_selection**: Scripts for model selection.
+   - **helper_VAE**: Helper functions for VAE disease state matching.
 
 ## Usage
 
