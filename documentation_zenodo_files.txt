@@ -121,7 +121,7 @@
 			- **CD4+_T_Cells**					-> code: */VAE/Syrian_hamster/v228_1_run_VAE_CD4.py
 			- **B_Cells**						-> code: */VAE/Syrian_hamster/v228_1_run_VAE_B_Cells.py
 
-- **supplement_S3**
+- **Figure_S3**
 	- Roborovski_hamster
 		- **Non_Classical_Monocytes** 		-> code: */Figure_3/cross_species_Roborovski_hamster/B01_monos_B_NK_pr.py; */Figure_3/cross_species_Roborovski_hamster/B02_pr.py 
 		- **NK_Cells**				-> code: */Figure_3/cross_species_Roborovski_hamster/B01_monos_B_NK_pr.py; */Figure_3/cross_species_Roborovski_hamster/B02_pr.py
@@ -143,7 +143,7 @@
 		- **Classical_Monocytes**		-> code: */supplement_S3_intermediate/Syrian_hamster/B01_monos_B_NK_pr.py; */supplement_S3_intermediate/Syrian_hamster/B02_ma.py 
 		- **decoded_objects_v2**		-> code: */supplement_S3_intermediate/Syrian_hamster/B05_save_decoded_object.py; */supplement_S3_intermediate/Syrian_hamster/B05_save_decoded_object_type1.py
 
-- **supplement_S4**
+- **Figure_S4**
 	- Roborovski_hamster
 		- s2_Non_Classical_Monocytes_supp.pdf 		-> code: */supplement_S4/s2_make_supplements_umap.py
 		- s2_NK_Cells_supp.pdf				-> code: */supplement_S4/s2_make_supplements_umap.py
