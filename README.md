@@ -26,6 +26,8 @@ This repository contains the scripts accompanying the publication Friedrich VD &
    - **input_processing**: Scripts for input processing in VAE pipeline.
    - **model_selection**: Scripts for model selection.
    - **helper_VAE**: Helper functions for VAE disease state matching.
+- **preprocesing**: Preliminary processing of input files.
+  
 
 ## Usage
 
