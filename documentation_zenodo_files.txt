@@ -167,9 +167,8 @@
 			- **CD4+_T_Cells**					-> code: */VAE/Syrian_hamster/v228_1_run_VAE_CD4.py
 			- **B_Cells**						-> code: */VAE/Syrian_hamster/v228_1_run_VAE_B_Cells.py
 
-- **hamster_R_objects**
-      - pr_blood_new_combined_integrated_annotated.rds    			 -> code: TO DO
-      - seu_blood_new_combined_integrated_annotated.rds 			 -> code: TO DO
+- **Syrian_hamster_seurat_object**
+      - seu_blood_new_combined_integrated_annotated.rds 			 -> code: */preprocessing/ma_scRNAseq_blood_timecourse_new.R
 
 - **integrated_seurat_object**
       - h228_3_qc_integrated_rpca_cellanno_FILTEREDqc_FILTEREDpureCells.RDS     -> code: TO DO
