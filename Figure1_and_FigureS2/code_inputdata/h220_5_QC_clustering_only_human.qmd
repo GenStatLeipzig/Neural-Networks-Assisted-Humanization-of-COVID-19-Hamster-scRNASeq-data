@@ -1,0 +1,726 @@
+---
+title: "h220_5_QC_clustering_only_human.qmd"
+format:
+  html:
+    df-print: paged
+    fig-width: 13
+    fig-height: 7
+    code-fold: true
+    code-summary: "Show the code"
+    toc: true
+    toc-location: left
+    toc-depth: 3
+    number-sections: false
+    standalone: true
+    embed-resources: true
+editor: source
+execute:
+  cache: false
+editor_options:
+  chunk_output_type: console
+---
+
+# \>INITITATE
+
+```{r results='hide', message=FALSE}
+
+#' # INITIIEREN ####
+rm(list = setdiff(ls(), ""))
+set.seed(192)
+.libPaths()
+
+library(toolboxH)
+library(Seurat)
+library(SeuratWrappers)
+library(here)
+library(ggplot2)
+library(sva)
+library(patchwork)
+library(BiocParallel)
+library(scDblFinder)
+library(pander)
+  require(ggsankey)
+  require(ggrepel)
+
+  require(dplyr)
+library(future) #https://satijalab.org/celllines/archive/v3.0/future_vignette.html
+options(future.globals.maxSize= 10*1024^3) # to prevent the error
+future.seed=TRUE # to care for proper random seeds
+ncores = 10 # in R conselo, 1, only mclapply is compatible with RSTUDIO
+plan("multicore", workers = ncores)
+
+RNGkind("L'Ecuyer-CMRG") # make random number working for mclapply https://bookdown.org/rdpeng/rprogdatascience/parallel-computation.html#the-parallel-package
+set.seed(192)
+
+knitr::opts_chunk$set(message = FALSE, warning = FALSE)
+```
+
+# \>AIM
+
+QC including qC cluster definition 
+
+# Dataimport
+
+First, we imported the data from the public data (`seurat_COVID19_freshWB-PBMC_cohort2_rhapsody_jonas_FG_2020-08-18.rds`).
+
+```{r results='hide'}
+fn = here("R/data/seurat_COVID19_freshWB-PBMC_cohort2_rhapsody_jonas_FG_2020-08-18.rds")
+# file.exists(fn)
+seurat_provided = readRDS(fn)
+seurat_provided2 = DietSeurat(seurat_provided, layers =  c("counts", "data"))
+
+dim(seurat_provided@assays$RNA$counts)
+rowsummen_RNAcounts = seurat_provided@assays$RNA$counts %>% rowSums()
+min(rowsummen_RNAcounts)
+
+dim(seurat_provided@assays$RNA$data)
+rowsummen_RNAdata = seurat_provided@assays$RNA$data %>% rowSums()
+min(rowsummen_RNAdata)
+
+(rowsummen_RNAcounts>2) %>% table()
+(rowsummen_RNAdata>2) %>% table()
+
+```
+
+The file was already QCed with minimal number of RNA features `r min(seurat_provided2$nFeature_RNA)`, minimal number of cellwise counts `r min(seurat_provided2$nCount_RNA)` and max. mitochondrial percentages `r max(seurat_provided2$percent.mito)`.
+
+Minimal cells per gene was `r min(rowsummen_RNAdata)`.
+
+Dimensions of the file were `r dim(seurat_provided2) %>% paste(collapse = " x ")` features x cells (RNA slot)
+# Filter to whole blood data
+
+we excluded PBMCs from this dataset to compare with whole blood based data from hamster
+
+```{r}
+seurat_provided2$cells %>% table()
+seurat_provided3 = subset(seurat_provided2, subset = cells =="Whole_blood")
+```
+
+# Batch correction
+
+We did batch correction with the data using ComBat implemented in package sva_3.44.0. This was done using following batches (sorted by increasing cell numbers):
+
+```{r}
+seurat_provided3$orig.ident %>% table() %>% sort()
+```
+
+
+
+# BAckground correction 
+
+We used packages DropletUtils 1.16.0 `r #packageVersion('DropletUtils')` and celda 1.12.0 `r #packageVersion('celda')` to do background correction of ambient RNA
+
+Thereby, we slightly modified standard settings, by applying a basic filter allowing only genes expressed in 3 cells and cells with at least 200 features for the background-corrected data.
+ 
+# Doublet definition
+
+Furthermore, we calculated batch-wise doublets applying package scDblFinder_1.13.12 and DoubletFinder_2.0. For the latter, we used cluster level `SCT_snn_res.0.4`. The assumed doublet rate was assumed to be lower than in 10x as BD rhapsody is known for a lower doublet rate, although no numeric estimates were available. (https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7770630/). For scDblFinder, we tested three doublet rates resulting between 1.2% and 9.4% percent doublets (excluding homotypic doublet), for DoubletFinder we used parameters resulting in 0.8% doublets (excluding homotypic doublet).
+
+```{r results='hide'}
+
+seurat = readRDS( here("R/results/h215_2_human_DoubletFinder.rds"))
+
+
+seurat$dbl_doubletfinder = ifelse(seurat$DF.classifications_ConsidHomoDoubl=="Doublet", "doublet",
+                                  ifelse(seurat$DF.classifications_ConsidHomoDoubl =="Singlet", "singlet", seurat$DF.classifications_ConsidHomoDoubl))
+seurat$dbl_doubletfinder_num = as.numeric(seurat$dbl_doubletfinder=="doublet")
+seurat$dbl_doubletfinder_num %>% mytable
+
+seurat$scDblFinder.class %>% mytable()
+seurat$scDblFinder.class_3proz %>% mytable()
+seurat$scDblFinder.class_1proz %>% mytable()
+
+seurat$dbl_scDblFinder9proz_num = as.numeric(seurat$scDblFinder.class=="doublet")
+seurat$dbl_scDblFinder3proz_num = as.numeric(seurat$scDblFinder.class_3proz=="doublet")
+seurat$dbl_scDblFinder1proz_num = as.numeric(seurat$scDblFinder.class_1proz=="doublet")
+seurat$dbl_scDblFinder9proz_num %>% mytable
+seurat$dbl_scDblFinder3proz_num %>% mytable
+seurat$dbl_scDblFinder1proz_num %>% mytable
+
+seurat$dbl_doubletsum_9 = seurat$dbl_doubletfinder_num + seurat$dbl_scDblFinder9proz_num 
+seurat$dbl_doubletsum_9 %>% mytable
+
+seurat$dbl_doubletsum_3 = seurat$dbl_doubletfinder_num + seurat$dbl_scDblFinder3proz_num 
+seurat$dbl_doubletsum_3 %>% mytable
+
+seurat$dbl_doubletsum_1 = seurat$dbl_doubletfinder_num + seurat$dbl_scDblFinder1proz_num 
+seurat$dbl_doubletsum_1 %>% mytable
+
+seurat$dbl_doubletsum_1gr0 = seurat$dbl_doubletsum_1>0
+seurat$dbl_doubletsum_3gr0 = seurat$dbl_doubletsum_3>0
+seurat$dbl_doubletsum_9gr0 = seurat$dbl_doubletsum_9>0
+
+cellannopre2 = seurat@meta.data %>% data.table(keep.rownames = T)
+```
+
+Correspondence of e.g. 1% sc doublet finder and doublet finder was moderate.
+
+#### dbl_doubletfinder:
+```{r }
+seurat$dbl_doubletfinder %>% mytable
+```
+
+####dbl_scDblFinder1proz:
+```{r }
+seurat$dbl_scDblFinder1proz_num %>% mytable
+```
+
+#### both:
+```{r }
+seurat$dbl_doubletsum_1 %>% mytable
+
+qlist11 = venn4(cellannopre2[dbl_doubletfinder=="doublet", rn],
+                cellannopre2[scDblFinder.class=="doublet", rn],
+                 cellannopre2[scDblFinder.class_3proz=="doublet", rn],
+                 cellannopre2[scDblFinder.class_1proz=="doublet", rn],
+                mylabels = c("dbl finder", "sc dbl finder 9",  "sc dbl finder 3",  "sc dbl finder 1")
+                  )
+```
+
+Quantitative score of both
+```{r }
+ggplot(cellannopre2, aes(pANN, scDblFinder.score_1proz)) + geom_point(alpha= 0.3) + geom_smooth()
+
+
+
+```
+
+Umap and cluster plots
+```{r fig.height=10, fig.width=10}
+DimPlot(seurat, group.by = c("SCT_snn_res.0.8", "scDblFinder.class", "dbl_doubletfinder",  "dbl_doubletsum_1", "dbl_doubletsum_3", "dbl_doubletsum_9")) & theme(legend.position = "top")
+
+count_doublet_1 = cbind(scdbl_prozgr0 = "_1", cellannopre2[, .N, .(SCT_snn_res.0.8, doublet = dbl_doubletsum_1gr0)])
+count_doublet_1[, prozent := N[doublet==T]/sum(N), SCT_snn_res.0.8]
+
+count_doublet_3 = cbind(scdbl_prozgr0 = "_3", cellannopre2[, .N, .(SCT_snn_res.0.8, doublet = dbl_doubletsum_3gr0)])
+count_doublet_3[, prozent := N[doublet==T]/sum(N), SCT_snn_res.0.8]
+
+count_doublet_9 = cbind(scdbl_prozgr0 = "_9", cellannopre2[, .N, .(SCT_snn_res.0.8, doublet = dbl_doubletsum_9gr0)])
+count_doublet_9[, prozent := N[doublet==T]/sum(N), SCT_snn_res.0.8]
+
+count_doublet_all = rbind(count_doublet_1,count_doublet_3,count_doublet_9)
+```
+
+There is no clear enrichment of doublets in cluster at any cutoff:
+```{r fig.height=14, fig.width=16}
+ggplot(count_doublet_all[doublet ==TRUE], aes(reorder(SCT_snn_res.0.8, -N), prozent, fill = scdbl_prozgr0)) + geom_col(position = "dodge") 
+```
+
+
+Hence, I will consider doublets of the 1% approach in either method as doublets:
+```{r}
+cellannopre2$dbl_doubletsum_1gr0 %>% mytable()
+```
+
+
+# add additional QC measures
+
+
+
+```{r}
+mitogenes_10x = grep('^MT-', rownames(seurat), value = T, ignore.case = T) %>% sort()
+
+
+ribogenes_10x = grep('^RP[SL][0-9]*$',  rownames(seurat), value = T, ignore.case = T) %>% sort()
+
+
+hbgenes_10x = grep("^HB[^(P)]",  rownames(seurat), value = T, ignore.case = T) %>% sort()
+# https://nbisweden.github.io/workshop-scRNAseq/labs/compiled/seurat/seurat_01_qc.html
+hbgenes_10x_pre =  grep("^HB[^(P)]",  rownames(seurat), value = T, ignore.case = T) %>% sort()
+hbgenes_10x_pre
+hbgenes_10x = setdiff(hbgenes_10x_pre, c("Hbs1l", "Hbegf") %>% toupper()) # this is just controlling hb in the embryo and th second Diphtheria Toxin Receptor (Heparin-Binding EGF-Like Growth Factor) 
+hbgenes_10x
+
+pltgenes_10x = grep("^PECAM1|^PF4",  rownames(seurat), value = T, ignore.case = T) %>% sort()
+pltgenes_10x
+```
+We calculated following percentages with respective genes:
+percent mitochondria `r mitogenes_10x %>% pander()`, 
+percent ribosome `r ribogenes_10x %>% pander()`,
+percent hemoglobinegenes `r hbgenes_10x %>% pander()`,
+
+
+```{r include=FALSE}
+
+# for calculating PercantageFeaturesSet i now need to to exclude scale.data slot
+Layers(object = seurat, pattern = "counts")
+seurat_noscale = DietSeurat(seurat, layers =  c("counts", "data"))
+Layers(object = seurat, pattern = "counts")
+Layers(object = seurat_noscale, pattern = "counts")
+stopifnot(identical(colnames(seurat), colnames(seurat_noscale)))
+
+seurat$pct.ribo = PercentageFeatureSet(seurat_noscale, features = ribogenes_10x)
+seurat$pct.mito = seurat$percent.mito
+seurat$pct.hb = PercentageFeatureSet(seurat_noscale, features = hbgenes_10x)
+seurat$pct.plt =PercentageFeatureSet(seurat_noscale, features = pltgenes_10x)
+
+seurat$pct_counts_in_top_50_genes =  pct_counts_in_top_N_genes_SCT (seurat, top_N = 50, slot = "SCT")
+
+
+
+core_cellparam = c("nFeature_RNA", 'pct_counts_in_top_50_genes',"pct.ribo",
+                   "nCount_RNA",  "pct.mito",  "pct.hb")
+
+
+```
+
+
+
+
+
+```{r results='hide'}
+testthat::test_that("All intended qc metrices are available in Seurat", expect_equal(setdiff(c(core_cellparam), names(seurat@meta.data)),character(0)))
+
+cellannopre3 = seurat@meta.data %>% data.table(keep.rownames = T)
+```
+
+# update celltype names
+to include CD4 and CD8
+```{r}
+refcelltype_ori = read_excel2(here("R/data/All Datasets PopulationsCD4CD8human.xlsx"), "R")
+refcelltype = refcelltype_ori[dataset =="humanSchulteRhaps_blood"]
+seurat$uniform_name_overview_old = seurat$uniform_name_overview
+seurat$uniform_name_overview = refcelltype[match_hk(seurat$cluster_labels_res.0.8, refcelltype$original_name), uniform_name_overview]
+
+
+
+plot_ggSankey_hk(seurat@meta.data[, c( "uniform_name_overview_old","uniform_name_overview")] %>% data.table())
+```
+
+Note that the human dataset does not have classified platelets and
+
+```{r}
+qlist55d = venn3(refcelltype_ori[dataset =="hamsterMA", uniform_name_overview],
+                 refcelltype_ori[dataset =="hamsterPR", uniform_name_overview],refcelltype_ori[dataset =="humanSchulteRhaps_blood", uniform_name_overview])
+```
+
+Not in human:
+```{r}
+qlist55d$q4
+```
+
+Only in human:
+```{r}
+qlist55d$q1
+```
+
+In all speciees:
+```{r}
+qlist55d$q7
+
+```
+
+
+
+# Filter  bad cluster
+
+## Define Cutoff for Labeling clusters BAD
+
+This cutoff can be a little more strict, i.e. defining rather more than less cells as bad QC, as this is only used to label whole clusters, that will be excluded if majority of cells within the cluster is bad 
+```{r results='hide'}
+
+cutoffcluster_nFeature_RNA_upper = 2750
+cutoffcluster_nFeature_RNA_lower = 400
+
+cutoffcluster_nCount_RNA_upper = 10000
+cutoffcluster_nCount_RNA_lower = 500
+
+cutoffcluster_pct.mito_upper = 20
+
+cutoffcluster_pct.hb_upper = 10
+
+cutoffcluster_pct.ribo_upper = 50
+cutoffcluster_pct.ribo_lower = 0
+
+cutoffcluster_pct_counts_in_top_50_genes = 30
+qc_cutoffcluster_tab_seurat = data.table(rbind(data.table(variable = 'nFeature_RNA', value = c( cutoffcluster_nFeature_RNA_upper  ,cutoffcluster_nFeature_RNA_lower)),
+                                       data.table(variable = 'nCount_RNA', value = c( cutoffcluster_nCount_RNA_upper  ,cutoffcluster_nCount_RNA_lower)),
+                                       data.table(variable = 'pct.mito', value = c( cutoffcluster_pct.mito_upper )) ,  
+                                       data.table(variable = 'pct.hb', value = c( cutoffcluster_pct.hb_upper )) ,
+                                       data.table(variable = 'pct.ribo', value = c( cutoffcluster_pct.ribo_upper, cutoffcluster_pct.ribo_lower )) ,
+                                       data.table(variable = 'pct_counts_in_top_50_genes', value = c( cutoffcluster_pct_counts_in_top_50_genes ))))
+
+writexl::write_xlsx(qc_cutoffcluster_tab_seurat, here("R/results/h220_5_qc_cutoffcluster_human.xlsx"))
+```
+
+```{r}
+pander(qc_cutoffcluster_tab_seurat)
+```
+
+
+
+```{r fig.height=12, fig.width=16, results='hide', warning=FALSE}
+
+
+plot_qc_with_cutoffs <- function(cellannotation, stratifycol, doubletcol, core_cellparam,qc_cutofftable) {
+  plot1 = ggplot(melt(cellannotation, id.vars = stratifycol, measure.vars = core_cellparam), aes( x=.data[[stratifycol]],y=value, fill =.data[[stratifycol]])) +
+    geom_violin(scale = "width")  + 
+    facet_wrap(~variable, 
+               scales= "free") + 
+    theme(axis.text.x = element_text(angle = 90, hjust = 0, vjust = 0.4))  + 
+    guides(fill = "none")+ geom_hline(data = qc_cutofftable, aes(yintercept = value), lty = 2)
+  
+  plot2 = ggplot(cellannotation, aes( .data[[stratifycol]], fill =.data[[doubletcol]])) +
+    geom_bar(position = "fill")  + 
+    theme(axis.text.x = element_text(angle = 90, hjust = 0, vjust = 0.4), 
+          legend.position = "top")
+  plot1 + plot2 + plot_layout(widths = c(3,1))
+    
+}
+plotqc_seurat1_inc = plot_qc_with_cutoffs(cellannotation = cellannopre3,stratifycol = "run10x",
+                                          doubletcol = "dbl_doubletsum_1gr0",
+                                          
+                                          qc_cutofftable = qc_cutoffcluster_tab_seurat,
+                                          core_cellparam = core_cellparam
+                                            
+                                            )+ 
+    plot_annotation(title = "seurat for bad cluster definition", "not filtered")
+plotqc_seurat1_inc
+plotqc_seurat1_inc   & scale_y_log1p(breaks = log1p_breaks(20))
+
+
+
+
+
+```
+
+
+```{r }
+
+cellannopre3[, lowQC_cluster := nFeature_RNA> cutoffcluster_nFeature_RNA_upper |
+                   nFeature_RNA < cutoffcluster_nFeature_RNA_lower |
+                   nCount_RNA > cutoffcluster_nCount_RNA_upper |
+                   nCount_RNA < cutoffcluster_nCount_RNA_lower |
+                   pct.mito > cutoffcluster_pct.mito_upper |
+                   pct.hb > cutoffcluster_pct.hb_upper  |
+                   pct.ribo > cutoffcluster_pct.ribo_upper | # TODO adapt fro scRNA typically lower!!!!
+                   pct_counts_in_top_50_genes > cutoffcluster_pct_counts_in_top_50_genes]
+
+lowQC_proz = cellannopre3[, .N, lowQC_cluster]
+lowQC_proz[, prozi := (N / sum(N)) %>% proz() ]
+
+
+doublet2_proz = cellannopre3[, .N, dbl_doubletsum_1gr0]
+doublet2_proz[, prozi := (N / sum(N)) %>% proz() ]
+
+lowQC_or_doublet = cellannopre3[, .N, .(dbl_doubletsum_1gr0 | lowQC_cluster)]
+lowQC_or_doublet[, prozi := (N / sum(N)) %>% proz() ]
+
+```
+
+If any of the cells does not adhere to these cutoffs (`r lowQC_proz[lowQC_cluster==T, prozi]`) or is found to be positive in any doublet tests with expected doublet rate of 1% (`r doublet2_proz[dbl_doubletsum_1gr0==T, prozi]`), it is marked potential bad QC cell (`r lowQC_or_doublet[dbl_doubletsum_1gr0 ==T, prozi]`)
+
+
+On the base of this  clustering level, I will clusterwise define bad QC cells. However, I will additionally identify bad clusters based on the integrated object
+
+```{r results='hide',fig.width=10, fig.height=12}
+seurat$lowQC_cluster = cellannopre3[match_hk(colnames(seurat), cellannopre3$rn),lowQC_cluster]
+seurat$lowQC_cluster %>% mytable()
+
+seurat$dbl_doublet = seurat$dbl_doubletsum_1gr0
+cellannopre3$dbl_doublet = seurat$dbl_doubletsum_1gr0
+seurat$dbl_doublet %>% mytable()
+
+seurat$lowQC_or_doublet = seurat$dbl_doubletsum_1gr0 |seurat$lowQC_cluster
+cellannopre3[, lowQC_or_doublet := dbl_doubletsum_1gr0 |lowQC_cluster]
+seurat$lowQC_or_doublet %>% mytable()
+
+p1 = DimPlot(seurat, group.by = c("SCT_snn_res.0.8","uniform_name_overview"), label  = T) & guides(color = "none") 
+# p2 = DimPlot(seurat, group.by =  c('lowQC_cluster', 'dbl_doublet', 'lowQC_or_doublet')) &  theme(legend.position = "top")
+p2 = DimPlot(seurat, group.by =  c('lowQC_cluster', 'dbl_doublet',"lowQC_or_doublet"), shuffle = T) &  theme(legend.position = "top")
+
+p1/p2
+```
+
+
+```{r results='hide', fig.width=15, fig.height=9}
+lowQC_or_doublet_df = rbind(
+  cbind(variable = "lowQC_cluster", cellannopre3[, .N, .(SCT_snn_res.0.8, badqc = lowQC_cluster)]),
+  cbind(variable = "dbl_doublet", cellannopre3[, .N, .(SCT_snn_res.0.8, badqc = dbl_doublet)]),
+  cbind(variable = "lowQC_or_doublet", cellannopre3[, .N, .(SCT_snn_res.0.8, badqc = lowQC_or_doublet)])
+)
+  
+lowQC_or_doublet_df[, prozent := N/sum(N), .(SCT_snn_res.0.8, variable)]
+bad_clusterIDs_pre = lowQC_or_doublet_df[variable =='lowQC_or_doublet' & prozent>0.5 & badqc==TRUE,SCT_snn_res.0.8]
+
+lowQC_or_doublet_df[, bad_cluster := SCT_snn_res.0.8 %in% bad_clusterIDs_pre]
+
+
+lowQC_or_doublet_df[, cells_in_cluster := sum(N), .(SCT_snn_res.0.8, variable)]
+
+setorder(lowQC_or_doublet_df, -cells_in_cluster)
+lowQC_or_doublet_df[, SCT_snn_res.0.8_ordered_by_N_decreasing := factor(SCT_snn_res.0.8, levels = unique(SCT_snn_res.0.8))]
+
+p4 = (ggplot(lowQC_or_doublet_df[badqc == TRUE], aes(SCT_snn_res.0.8_ordered_by_N_decreasing, prozent, fill = variable, alpha = bad_cluster)) + geom_col(position = "dodge") + 
+        # facet_grid(.~ bad_cluster, scales = "free", space = "free", labeller = 'label_both') + 
+        geom_hline(yintercept = 0.5, lty = 2) + scale_y_continuous(label = label_percent(accuracy = 1), breaks = pretty_breaks(10))) + theme(legend.position = "top") + scale_alpha_manual(values = c(0.5, 1))
+```
+
+
+```{r results='hide', fig.width=15, fig.height=9}
+lowQC_or_doublet_dfcelltype = rbind(
+  cbind(variable = "lowQC_cluster", cellannopre3[, .N, .(uniform_name_overview, badqc = lowQC_cluster)]),
+  cbind(variable = "dbl_doublet", cellannopre3[, .N, .(uniform_name_overview, badqc = dbl_doublet)]),
+  cbind(variable = "lowQC_or_doublet", cellannopre3[, .N, .(uniform_name_overview, badqc = lowQC_or_doublet)])
+)
+  
+lowQC_or_doublet_dfcelltype[, prozent := N/sum(N), .(uniform_name_overview, variable)]
+
+bad_celltype = lowQC_or_doublet_dfcelltype[variable =='lowQC_or_doublet' & prozent>0.5 & badqc==TRUE,uniform_name_overview]
+# 
+# seurat$lowQC_or_doublet_cluster = seurat$uniform_name_overview %in% bad_celltype
+# 
+lowQC_or_doublet_dfcelltype[, bad_cluster_celltype := uniform_name_overview %in% bad_celltype]
+lowQC_or_doublet_dfcelltype[, cells_in_cluster := sum(N), .(uniform_name_overview, variable)]
+
+setorder(lowQC_or_doublet_dfcelltype, -cells_in_cluster)
+lowQC_or_doublet_dfcelltype[, uniform_name_overview_ordered_by_N_decreasing := factor(uniform_name_overview, levels = unique(uniform_name_overview))]
+
+p4_celltype = (ggplot(lowQC_or_doublet_dfcelltype[badqc == TRUE], aes(uniform_name_overview_ordered_by_N_decreasing, prozent, fill = variable, alpha = bad_cluster_celltype)) + geom_col(position = "dodge") + 
+        # facet_grid(.~ bad_cluster_celltype, scales = "free", space = "free", labeller = 'label_both') + 
+        geom_hline(yintercept = 0.5, lty = 2) + scale_y_continuous(label = label_percent(accuracy = 1), breaks = pretty_breaks(10))) + theme(legend.position = "top") + scale_alpha_manual(values = c(0.5, 1)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+```{r results='hide', fig.width=15, fig.height=20}
+p55 = DimPlot(seurat, group.by = c("SCT_snn_res.0.8",'lowQC_or_doublet_cluster','uniform_name_overview' ), label = T, shuffle = T) & NoLegend()
+p4/p4_celltype/p55
+```
+```{r}
+jpeg2(here("R/results/h220_5_definign_bad_clusters_details1_human.jpeg"), 14,10)
+plot((p4+p4_celltype)/p55)
+dev.off()
+```
+
+
+## show problems of problematic cell clusters
+```{r fig.width=9, fig.height=9}
+p16a = plot_qc_with_cutoffs(cellannotation = cellannopre3[SCT_snn_res.0.8 %in% bad_clusterIDs_pre],stratifycol = "SCT_snn_res.0.8",doubletcol = "dbl_doubletsum_1gr0",
+                                          
+                                          qc_cutofftable = qc_cutoffcluster_tab_seurat,
+                                          core_cellparam = core_cellparam
+                                            
+                                            )+ 
+    plot_annotation(title = "bad clusters", "not filtered")
+
+
+p16b = plot_ggSankey_hk(cellannopre3[SCT_snn_res.0.8 %in% bad_clusterIDs_pre,.(SCT_snn_res.0.8, uniform_name_overview )])
+
+
+p16a+p16b  +plot_layout(widths = c(4,1,2))
+
+```
+
+```{r}
+jpeg2(here("R/results/h220_5_definign_bad_clusters_details2_human.jpeg"), 14,10)
+plot(p16a+p16b  +plot_layout(widths = c(4,1,2)))
+dev.off()
+
+```
+
+
+
+```{r results='hide'}
+bad_clusterIDs = setdiff(bad_clusterIDs_pre, c(24 ))
+seurat$lowQC_or_doublet_cluster = seurat$SCT_snn_res.0.8 %in% bad_clusterIDs
+tableeintraege = seurat$lowQC_or_doublet_cluster %>% mytable() %>% unlist()
+```
+
+
+As bad cluster, I consider only cluster not excluding a whole celltype. Hence, I mark clusters `r bad_clusterIDs %>% pander()`, i.e. N= `r tableeintraege['observed2'] %>% as.character()` I do not exclude the other cluster, as it corresponds to a single celltype
+
+
+```{r}
+cellannopre3b = seurat@meta.data %>% as.data.table(keep.rownames = T)
+draussen = cellannopre3b[,.N, .(lowQC_or_doublet_cluster, uniform_name_overview)]
+draussen[, prozent := N/sum(N) , uniform_name_overview]
+draussen[, prozent2 :=prozent %>% proz()]
+
+draussen[lowQC_or_doublet_cluster==T][order(-prozent)][,.(uniform_name_overview,N, prozent2)] %>% pander()
+seurat2 = seurat[, seurat$lowQC_or_doublet_cluster==F]
+```
+
+
+
+# filter  bad cells without excluding cluster
+
+## Define Cutoff 
+
+This cutoff should be more strict, i.e. identifying less cells as bad QC, as this defines the additionally bad cells to exclude. The following plots are allways excluded
+
+```{r  results='hide'}
+
+cutoffcluster_nFeature_RNA_upper
+cutoffcell_nFeature_RNA_upper = 3000
+cutoffcluster_nFeature_RNA_lower
+cutoffcell_nFeature_RNA_lower = 250
+
+cutoffcluster_nCount_RNA_upper
+cutoffcell_nCount_RNA_upper = 15000
+cutoffcluster_nCount_RNA_lower
+cutoffcell_nCount_RNA_lower = 300
+
+cutoffcluster_pct.mito_upper
+cutoffcell_pct.mito_upper = 25
+
+cutoffcluster_pct.hb_upper
+cutoffcell_pct.hb_upper = 15
+
+cutoffcluster_pct.ribo_upper
+cutoffcell_pct.ribo_upper = 50
+cutoffcell_pct.ribo_lower = 0
+
+cutoffcluster_pct_counts_in_top_50_genes
+cutoffcell_pct_counts_in_top_50_genes = 35
+
+
+qc_cutoffcell_tab_seurat = data.table(rbind(data.table(variable = 'nFeature_RNA', value = c( cutoffcell_nFeature_RNA_upper  ,cutoffcell_nFeature_RNA_lower)),
+                                       data.table(variable = 'nCount_RNA', value = c( cutoffcell_nCount_RNA_upper  ,cutoffcell_nCount_RNA_lower)),
+                                       data.table(variable = 'pct.mito', value = c( cutoffcell_pct.mito_upper )) ,  
+                                       data.table(variable = 'pct.hb', value = c( cutoffcell_pct.hb_upper )) ,
+                                       data.table(variable = 'pct.ribo', value = c( cutoffcell_pct.ribo_upper, cutoffcell_pct.ribo_lower )) ,
+                                       data.table(variable = 'pct_counts_in_top_50_genes', value = c( cutoffcell_pct_counts_in_top_50_genes ))))
+
+
+
+```
+
+```{r}
+qc_cutoffcell_tab_seurat %>% pander()
+```
+
+
+
+```{r fig.height=12, fig.width=16, results='hide', warning=FALSE}
+# Custom scale function
+cellannopre4 = seurat2@meta.data %>% data.table(keep.rownames = T)
+
+plotqc_seurat1_inc_cell = plot_qc_with_cutoffs(cellannotation = cellannopre4,stratifycol = "run10x",
+                                          doubletcol = "dbl_doubletsum_1gr0",
+                                          
+                                          qc_cutofftable = qc_cutoffcell_tab_seurat,
+                                          core_cellparam = core_cellparam
+                                            
+                                            )+ 
+    plot_annotation(title = "seurat for bad cluster definition", "cluster filtered")
+plotqc_seurat1_inc_cell
+plotqc_seurat1_inc_cell   & scale_y_log1p(breaks = log1p_breaks(20))
+```
+I also exclude the doublet cells found in any of the 1%-doublet based methods
+
+```{r }
+
+cellannopre4[, lowQC_or_doublet_cell := nFeature_RNA> cutoffcell_nFeature_RNA_upper |
+                   nFeature_RNA < cutoffcell_nFeature_RNA_lower |
+                   nCount_RNA > cutoffcell_nCount_RNA_upper |
+                   nCount_RNA < cutoffcell_nCount_RNA_lower |
+                   pct.mito > cutoffcell_pct.mito_upper |
+                   pct.hb > cutoffcell_pct.hb_upper  |
+                   pct.ribo > cutoffcell_pct.ribo_upper | 
+                   pct.ribo < cutoffcell_pct.ribo_lower | 
+                   pct_counts_in_top_50_genes > cutoffcell_pct_counts_in_top_50_genes |
+  dbl_doubletsum_1gr0==T]
+
+lowQC_proz_cell = cellannopre4[, .N, lowQC_or_doublet_cell]
+lowQC_proz_cell[, prozi := (N / sum(N)) %>% proz() ]
+
+```
+### exclude bad cells
+If any of the cells does not adhere to these cutoffs, it is excluded (`r lowQC_proz_cell[lowQC_or_doublet_cell==T, prozi]`)
+
+
+```{r results='hide',fig.width=10, fig.height=7}
+seurat2$lowQC_or_doublet_cell = cellannopre4[match_hk(colnames(seurat2), cellannopre4$rn),lowQC_or_doublet_cell]
+seurat2$lowQC_or_doublet_cell %>% mytable()
+
+p1_cell = DimPlot(seurat2, group.by = c("SCT_snn_res.0.8","uniform_name_overview"), label  = T) & guides(color = "none") 
+# p2 = DimPlot(seurat2, group.by =  c('lowQC_cluster', 'dbl_doublet', 'lowQC_or_doublet')) &  theme(legend.position = "top")
+p2_cell = DimPlot(seurat2, group.by =  c('lowQC_or_doublet_cell')) &  theme(legend.position = "top")
+
+p1_cell+p2_cell
+```
+
+
+```{r results='hide', fig.width=9, fig.height=9}
+lowQC_or_doublet_cell_cluster_df = rbind(
+  cbind(variable = "lowQC_or_doublet_cell", cellannopre4[, .N, .(SCT_snn_res.0.8, badqc = lowQC_or_doublet_cell)])
+  
+)
+  
+lowQC_or_doublet_cell_cluster_df[, prozent := N/sum(N), .(SCT_snn_res.0.8, variable)]
+
+lowQC_or_doublet_cell_cluster_df[, cells_in_cluster := sum(N), .(SCT_snn_res.0.8, variable)]
+
+setorder(lowQC_or_doublet_cell_cluster_df, -cells_in_cluster)
+lowQC_or_doublet_cell_cluster_df[, SCT_snn_res.0.8_ordered_by_N_decreasing := factor(SCT_snn_res.0.8, levels = unique(SCT_snn_res.0.8))]
+
+average_excluded_cell = sum(seurat2$lowQC_or_doublet_cell==T)/ncol(seurat2) 
+
+p4_cell_cluster = (ggplot(lowQC_or_doublet_cell_cluster_df[badqc == TRUE], aes(SCT_snn_res.0.8_ordered_by_N_decreasing, prozent, fill = variable)) + geom_col(position = "dodge") + 
+        # facet_grid(.~ bad_cluster, scales = "free", space = "free", labeller = 'label_both') + 
+        geom_hline(yintercept = average_excluded_cell, lty = 2)+
+          ggtitle("", "dashed line = average excluded") +
+          scale_y_continuous(label = label_percent(accuracy = 1), breaks = pretty_breaks(10))) + theme(legend.position = "top") + scale_alpha_manual(values = c(0.5, 1)) 
+
+
+
+lowQC_or_doublet_cell_celltype_df = rbind(
+  cbind(variable = "lowQC_or_doublet_cell", cellannopre4[, .N, .(uniform_name_overview, badqc = lowQC_or_doublet_cell)])
+  
+)
+  
+lowQC_or_doublet_cell_celltype_df[, prozent := N/sum(N), .(uniform_name_overview, variable)]
+
+lowQC_or_doublet_cell_celltype_df[, cells_in_cluster := sum(N), .(uniform_name_overview, variable)]
+
+setorder(lowQC_or_doublet_cell_celltype_df, -cells_in_cluster)
+lowQC_or_doublet_cell_celltype_df[, azimuth_l1_ordered_by_N_decreasing := factor(uniform_name_overview, levels = unique(uniform_name_overview))]
+
+p4_cell_celltype = ggplot(lowQC_or_doublet_cell_celltype_df[badqc == TRUE], aes(azimuth_l1_ordered_by_N_decreasing, prozent, fill = variable)) + geom_col(position = "dodge") + 
+        # facet_grid(.~ bad_cluster, scales = "free", space = "free", labeller = 'label_both') + 
+        # geom_hline(yintercept = 0.5, lty = 2) + 
+          scale_y_continuous(label = label_percent(accuracy = 1), 
+                             # limits = c(0, 0.5),
+                             breaks = pretty_breaks(10)
+                             ) + 
+  geom_hline(yintercept = average_excluded_cell, lty = 2)+
+          ggtitle("", "dashed line = average excluded") +
+  theme(legend.position = "top") + scale_alpha_manual(values = c(0.5, 1)) + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+p4_cell_cluster/p4_cell_celltype & ylab("")
+
+
+seurat$lowQC_or_doublet_cell  = cellannopre4[match_hk(colnames(seurat), cellannopre4$rn), lowQC_or_doublet_cell]
+# seurat$lowQC_or_doublet_cell %>% mytable()
+seurat$lowQC_or_doublet_cell = ifelse(seurat$SCT_snn_res.0.8 %in% bad_clusterIDs, TRUE, seurat$lowQC_or_doublet_cell)
+
+tableeintraege_cell = seurat$lowQC_or_doublet_cell %>% mytable() %>% unlist()
+
+
+```
+
+Hence, I additionally sign those bad cells (N= `r sum(seurat2$lowQC_or_doublet_cell==T) %>% as.character()`, `r average_excluded_cell %>% proz()`).
+
+Including bad cluster cells, I mark following cells as bad QC: `r tableeintraege_cell['observed2']`
+
+
+
+
+
+# SAVE
+
+```{r saving}
+cellanno = seurat@meta.data %>% as.data.table(keep.rownames = T)
+fwrite(cellanno, here("R/results/h220_5_qc_human_singlestudy_cellanno.txt.gz"))
+
+saveRDS(seurat, here("R/results/h220_5_qc_human_singlestudy.rds"))
+```
+
+# finalize
+
+```{r}
+finalizeSkript()
+
+```
