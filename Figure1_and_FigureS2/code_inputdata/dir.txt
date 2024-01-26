@@ -1,0 +1,25 @@
+ Datentr„ger in Laufwerk J: ist projekte
+ Volumeseriennummer: CC7D-0093
+
+ Verzeichnis von j:\02_projekte\2110_sympath_scRNA_HamsterHumanBloodCov19v2\Neural-Networks-Assisted-Humanization-of-COVID-19-Hamster-scRNASeq-data\Figure1_and_FigureS2\code_inputdata
+
+26.01.2024  12:52    <DIR>          .
+25.01.2024  03:06    <DIR>          ..
+26.01.2024  12:52               263 dir.txt
+25.01.2024  03:21             7,955 h210_1_batchCorrect.qmd
+25.01.2024  03:40             8,363 h212_2_backround_correct_doubletten_clustern_human.qmd
+25.01.2024  03:42             8,876 h213_2_backround_correct_doubletten_clustern_hamsterPR.qmd
+25.01.2024  03:43             8,700 h214_2_backround_correct_doubletten_clustern_hamsterMA.qmd
+25.01.2024  03:52            16,921 h215_2_additional_doubletten_check_human.qmd
+25.01.2024  03:53            19,936 h216_2_gene_orthologues_hamsterPR.R
+25.01.2024  03:55             8,245 h217_2_gene_orthologues_hamsterMA.R
+25.01.2024  04:00            15,850 h218_3_additional_doubletten_check_hamsterMA.qmd
+25.01.2024  04:03            15,957 h219_3_additional_doubletten_check_hamsterRB.qmd
+25.01.2024  07:43            30,017 h220_5_QC_clustering_only_human.qmd
+25.01.2024  07:47            29,286 h221_5_QC_clustering_only_hamsterMA.qmd
+25.01.2024  07:56            29,513 h222_2_QC_clustering_only_hamsterPR.qmd
+25.01.2024  08:01            18,135 h224_3_integration_beforeQC.qmd
+25.01.2024  08:06            16,250 h225_5_QC_integrated_clusters_allspecies_newPCA.qmd
+25.01.2024  08:09            13,350 h228_3_define_pure_celltypes_per_cluster_for_export.R
+              16 Datei(en),        247,617 Bytes
+               2 Verzeichnis(se), 181,285,777,346,560 Bytes frei

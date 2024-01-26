@@ -1,22 +1,22 @@
 **Folder Structure:**
 
 -**Supplementary Table S2:	Orthologue genes human assigned to hamster genes**
-  - The file used for supplementary table creation is called `h224_3_orhologues_used.xlsx` and was produced with scripts located  in folder  */scripts run in this order: h210_1* > h212_2* > h213_2* > h214_2* > h215_2* > h216_2* > h217_2* > h218_3* > h219_3* > h220_5* > h221_5* > h222_2* > h224_3*
+  - The file used for supplementary table creation is called `h224_3_orhologues_used.xlsx` and was produced with scripts located  in folder  */Figure1_and_FigureS2/code_inputdata in this order: h210_1* > h212_2* > h213_2* > h214_2* > h215_2* > h216_2* > h217_2* > h218_3* > h219_3* > h220_5* > h221_5* > h222_2* > h224_3*
 
 -**Supplementary Table S4:	Gene expression association analysis statistic**
-  - The file used for supplementary table creation is called `h245_7_de_list.xlsx`, tab "DElist", and was produced with scripts located  in folder  */scripts run in this order:  h210_1* > h212_2* > h213_2* > h214_2* > h215_2* > h216_2* > h217_2* > h218_3* > h219_3* > h220_5* > h221_5* > h222_2* > h224_3* > h225_5* > h226_1* > h227_2* > h228_3* > h235_3* > h240_3* > h245_7*
+  - The file used for supplementary table creation is called `h245_7_de_list.xlsx`, tab "DElist", and was produced with scripts located  in folder  */Figure1_and_FigureS2/code_inputdata in this order:  h210_1* > h212_2* > h213_2* > h214_2* > h215_2* > h216_2* > h217_2* > h218_3* > h219_3* > h220_5* > h221_5* > h222_2* > h224_3* > h225_5* > h226_1* > h227_2* > h228_3* followed by scripts in folder */Supplementary_Tables/scripts  h235_3* > h240_3* > h245_7*
 
 
 -**Supplementary Table S5:	Percentage of transcriptome changed according to each species and contrast**
-  - The file used for supplementary table creation is called `h245_7_de_list.xlsx`, tab "eta1", and was produced with scripts located  in folder  */scripts run in this order:  h210_1* > h212_2* > h213_2* > h214_2* > h215_2* > h216_2* > h217_2* > h218_3* > h219_3* > h220_5* > h221_5* > h222_2* > h224_3* > h225_5* > h226_1* > h227_2* > h228_3* > h235_3* > h240_3* > h245_7*
+  - The file used for supplementary table creation is called `h245_7_de_list.xlsx`, tab "eta1", and was produced with scripts located  in folder */Figure1_and_FigureS2/code_inputdata in this order:  h210_1* > h212_2* > h213_2* > h214_2* > h215_2* > h216_2* > h217_2* > h218_3* > h219_3* > h220_5* > h221_5* > h222_2* > h224_3* > h225_5* > h226_1* > h227_2* > h228_3* followed by scripts in folder */Supplementary_Tables/scripts  h235_3* > h240_3* > h245_7*
 
 
 -**Supplementary Table S6:	Pathway enrichment analysis**
-  - The file used for supplementary table creation is called `h245_7_pathways.xlsx` and was produced with scripts located  in folder  */scripts run in this order:  h210_1* > h212_2* > h213_2* > h214_2* > h215_2* > h216_2* > h217_2* > h218_3* > h219_3* > h220_5* > h221_5* > h222_2* > h224_3* > h225_5* > h226_1* > h227_2* > h228_3* > h235_3* > h240_3* > h245_7*
+  - The file used for supplementary table creation is called `h245_7_pathways.xlsx` and was produced with scripts located  in folder */Figure1_and_FigureS2/code_inputdata in this order:  h210_1* > h212_2* > h213_2* > h214_2* > h215_2* > h216_2* > h217_2* > h218_3* > h219_3* > h220_5* > h221_5* > h222_2* > h224_3* > h225_5* > h226_1* > h227_2* > h228_3* followed by scripts in folder */Supplementary_Tables/scripts  > h235_3* > h240_3* > h245_7*
 
 
 -**Supplementary Table S7:	Genes differentially expressed in the corresponding directions in human and hamsters**
-  - The file used for supplementary table creation is called `h265_8_FDR20_genes_same_direction_filtered_for_comparisons_with_significant_effect_size_replication.xlsx` and was produced with scripts located  in folder  */scripts run in this order:  h210_1* > h212_2* > h213_2* > h214_2* > h215_2* > h216_2* > h217_2* > h218_3* > h219_3* > h220_5* > h221_5* > h222_2* > h224_3* > h225_5* > h226_1* > h227_2* > h228_3* > h235_3* > h240_3* > h265_8*
+  - The file used for supplementary table creation is called `h265_8_FDR20_genes_same_direction_filtered_for_comparisons_with_significant_effect_size_replication.xlsx` and was produced with scripts located */Figure1_and_FigureS2/code_inputdata in this order:  h210_1* > h212_2* > h213_2* > h214_2* > h215_2* > h216_2* > h217_2* > h218_3* > h219_3* > h220_5* > h221_5* > h222_2* > h224_3* > h225_5* > h226_1* > h227_2* > h228_3* followed by scripts in folder */Supplementary_Tables/scripts  > h235_3* > h240_3* > h265_8*
 
 
 
