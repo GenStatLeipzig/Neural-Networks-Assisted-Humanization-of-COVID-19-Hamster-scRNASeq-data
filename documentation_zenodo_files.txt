@@ -84,7 +84,7 @@
 		- **Immature_Neutrophils_type1**	-> code: */FigureS3/Syrian_hamster/B01_Immature_Neutrophils_type1_h270.py; */FigureS3/Syrian_hamster/B02_ma_Immature_Neutrophils_type1.py
 		- **Classical_Monocytes**		-> code: */FigureS3/Syrian_hamster/B01_monos_B_NK_pr.py; */FigureS3/Syrian_hamster/B02_ma.py
 		- **decoded_objects_v2**		-> code: */FigureS3/Syrian_hamster/B05_save_decoded_object.py; */FigureS3/Syrian_hamster/B05_save_decoded_object_type1.py - used as input for h295_2_calc_spearman_r2_humanisation_perMedian.qmd
-	- h295_2_ergtabm_spearman.xlsx 			-> code: */Figure3/h295_2_calc_spearman_r2_humanisation_perMedian.qmd
+	- h295_2_ergtabm_spearman.xlsx 			-> code: */FigureS3/h295_2_calc_spearman_r2_humanisation_perMedian.qmd
 
 - **Figure_S4**
 	- Roborovski_hamster
