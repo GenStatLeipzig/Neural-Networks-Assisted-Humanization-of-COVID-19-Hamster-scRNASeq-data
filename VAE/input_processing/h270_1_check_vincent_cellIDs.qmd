@@ -1,0 +1,223 @@
+---
+title: "h270_1_check_vincent_cellIDs"
+format:
+  html:
+    df-print: paged
+    fig-width: 13
+    fig-height: 7
+    code-fold: true
+    code-summary: "Show the code"
+    toc: true
+    toc-location: left
+    toc-depth: 3
+    number-sections: false
+    standalone: true
+    embed-resources: true
+editor: source
+execute:
+  cache: false
+editor_options:
+  chunk_output_type: console
+---
+
+# INITITATE
+
+```{r results='hide', message=FALSE}
+
+#' # INITIIEREN ####
+set.seed(192)
+.libPaths()
+
+library(toolboxH)
+library(Seurat)
+library(SeuratWrappers)
+library(here)
+library(ggplot2)
+library(sva)
+library(patchwork)
+library(BiocParallel)
+library(scDblFinder)
+library(pander)
+  require(ggsankey)
+  require(ggrepel)
+
+  require(dplyr)
+library(future) #https://satijalab.org/celllines/archive/v3.0/future_vignette.html
+options(future.globals.maxSize= 10*1024^3) # to prevent the error
+future.seed=TRUE # to care for proper random seeds
+ncores = 10 # in R conselo, 1, only mclapply is compatible with RSTUDIO
+plan("multicore", workers = ncores)
+
+RNGkind("L'Ecuyer-CMRG") # make random number working for mclapply https://bookdown.org/rdpeng/rprogdatascience/parallel-computation.html#the-parallel-package
+set.seed(192)
+
+knitr::opts_chunk$set(message = FALSE, warning = FALSE)
+```
+
+# AIM
+Celltypeproportion hamster 
+ 
+# Dataimport
+
+I
+```{r results='hide'}
+
+cellanno_pre = fread(here("R/results/h228_3_qc_integrated_rpca_cellanno_FILTEREDqc_FILTEREDpureCells.txt.gz"))
+
+cellanno_pre[,.N,uniform_name_overview_keep]
+
+cellanno = cellanno_pre[uniform_name_overview_keep==T]
+
+
+cellanno[,.N, species]
+cellanno[,.N, uniform_name_overview3]
+
+```
+
+## vincent = 
+```{r}
+vinc_neutro = fread(here("R/data/C01_human_Immature_Neutrophils_ID.csv"))
+vinc_neutro[,.N, uniform_name_acurate_N]
+
+```
+
+## vgl
+```{r}
+qlist1 = venn3(vinc_neutro$ID,
+               cellanno[uniform_name_overview3=="Immature Neutrophils 1", rn],
+               cellanno[uniform_name_overview3=="Immature Neutrophils 2", rn],
+               mylabels = c("C01_human_Immature_Neutrophils_ID.csv", "SEurat:Immature Neutrophils 1", "SEurat:Immature Neutrophils 2"))
+
+
+str(qlist1)
+
+
+```
+
+```{r}
+cellanno[rn %in% qlist1$q2, .N, .(cluster_labels_res.0.8,uniform_name_overview3, rpca_clusters, rpca_clusters.v2)]
+```
+
+##
+```{r}
+seurat = readRDS( here("R/results/h228_3_qc_integrated_rpca_cellanno_FILTEREDqc_FILTEREDpureCells.rds"))
+seurat
+```
+
+```{r}
+seurat$vincent_different = colnames(seurat) %in% qlist1$q2
+seurat$vincent_immatureNeutro = colnames(seurat) %in% vinc_neutro$ID
+seurat$vincent_different %>% mytable()
+
+DimPlot(seurat, group.by = c('uniform_name_overview3', 'rpca_clusters.v2', "vincent_different"), raster = F, reduction = "umap.rpca.v2", label = T, repel = T)
+
+seurat$cluster6 = seurat$rpca_clusters.v2==6
+DimPlot(seurat, group.by = c( 'rpca_clusters.v2','cluster6'), raster = F, reduction = "umap.rpca.v2",label = T)
+DimPlot(seurat, group.by = c( 'cluster6', "dbl_doubletsum"), raster = F, reduction = "umap.rpca.v2",label = T, split.by = "species")
+
+
+```
+
+```{r}
+plot_ggSankey_hk <- function(data ) {
+  # data = seuratanno[,.(seurat_clusters, pp_lungmarker_221128, pp_bloodmarker_221128)]
+  # data = seuratanno[,.(seurat_clusters, richardPeterMarker)]
+  require(ggsankey)
+  require(ggrepel)
+
+  require(dplyr)
+
+  label1 = names(data)[1]
+  label2 = names(data)[2]
+
+
+  orderlabel = "label2"
+
+
+  plotdat1 = ggsankey::make_long(data, {names(data)})
+
+  myorderlabel = get(orderlabel)
+  myotherlabel = setdiff(names(data), myorderlabel)
+
+  datanames = names(data)
+  mytab = data[,.N, by= datanames]
+
+  mytab[, n_per_var1 := sum(N, na.rm = T), .(get(myorderlabel))]
+  mytab = mytab[order(-n_per_var1, get(myorderlabel), -N)]
+  mytab
+
+  # plotdat1$next_node = factor(plotdat1$next_node, levels = mytab[, unique(get(myorderlabel))])
+
+
+  mylevels_pre = lapply(setdiff(names(data), myorderlabel), function(myname) {
+    mytab[,get(myname)%>% as.character()]  %>% unique()
+  } ) %>% unlist()
+
+
+  mylevels = c(mytab[,get(myorderlabel) %>% as.character()], mylevels_pre) %>% unique()
+  setDT(plotdat1)
+  plotdat1[,node := factor(node, levels = mylevels)]
+  p_sankey = ggplot(plotdat1, aes(x = x,
+                                  next_x = next_x,
+                                  node = node,
+                                  next_node = next_node,
+                                  fill = node,
+                                  label = node)) +
+    geom_sankey(flow.alpha = 0.6, node.color = alpha("grey55", 0.2), alpha = 0.4) +
+    geom_sankey_text(size = 4, color = "black") +
+    # scale_fill_manual(values = NogpaletteReihe) +
+    # scale_x_discrete(labels = c(label1, label2))+
+    theme_sankey(base_size = 18) +
+    labs(x = NULL) +
+    theme(legend.position = "none",
+          plot.title = element_text(hjust = .5),
+          axis.text.x = element_text(color = "black"))
+  p_sankey
+
+}
+
+plot_ggSankey_hk(cellanno[ grepl("Mono", uniform_name_overview3), .(uniform_name_overview3, rpca_clusters.v2,cluster_labels_res.0.8)])
+
+cellanno$species %>% mytable
+stopifnot(identical(colnames(seurat), rownames(seurat@reductions$umap.rpca.v2@cell.embeddings)))
+seurat$UMAP_1_rpca_v2 = seurat@reductions$umap.rpca.v2@cell.embeddings[,1]
+seurat$UMAP_2_rpca_v2 = seurat@reductions$umap.rpca.v2@cell.embeddings[,2]
+
+ggplot(seurat@meta.data, aes(UMAP_1_rpca_v2, UMAP_2_rpca_v2, col = uniform_name_overview3)) + geom_point()
+
+names(seurat@graphs)
+Idents(seurat) = seurat$rpca_clusters.v2
+seurat = FindSubCluster(object = seurat,
+                         cluster = 6,
+                         graph.name = "RNA_nn",
+  subcluster.name = "subcluster_6",
+  resolution = 2, # 0.5 default
+  algorithm = 1 # 1 default, 	
+# Algorithm for modularity optimization (1 = original Louvain algorithm; 2 = Louvain algorithm with multilevel refinement; 3 = SLM algorithm; 4 = Leiden algorithm). Leiden requires the leidenalg python.
+)
+
+plot_sub6 = DimPlot(seurat[,seurat$rpca_clusters.v2==6], group.by = "subcluster_6", raster = F, reduction = "umap.rpca.v2", split.by = "species", label = T, repel = T)
+
+plot_sub6
+plotly::ggplotly(plot_sub6)
+
+seurat$umap2gr_min5 = seurat$UMAP_2_rpca_v2 >-5
+cellanno = seurat@meta.data %>% as.data.table(keep.rownames = T)
+DimPlot(seurat,reduction = "umap.rpca.v2", group.by = "subcluster_6",label.size = 2.5 ,label = T, raster  =F) +plot_ggSankey_hk(cellanno[ species != "human" &grepl("Mono", uniform_name_overview3), .(uniform_name_overview3, rpca_clusters.v2,umap2gr_min5,species)])
+
+
+```
+
+```{r}
+cellanno[,.N, .(uniform_name_overview3, vincent_immatureNeutro,vincent_different, rpca_clusters.v2)][order(rpca_clusters.v2)]
+
+cellanno[,.N, uniform_name_overview3]
+
+fwrite(cellanno[,.(rn, uniform_name_overview_keep, uniform_name_overview3,rpca_clusters.v2, species,severity,cluster_labels_res.0.8_schulte_schrepping = cluster_labels_res.0.8, vincent_different)], here("R/results/h270_1_clusterlabels_in_h228_3_seurat.txt.gz"))
+```
+# finalize
+
+```{r}
+finalizeSkript()
+```
+

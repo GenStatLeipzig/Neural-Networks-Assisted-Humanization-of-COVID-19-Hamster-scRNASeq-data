@@ -1,0 +1,409 @@
+  ---
+title: "h225_4_QC_integrated_clusters_allspecies"
+format:
+  html:
+    df-print: paged
+    fig-width: 13
+    fig-height: 7
+    code-fold: true
+    code-summary: "Show the code"
+    toc: true
+    toc-location: left
+    toc-depth: 3
+    number-sections: false
+    standalone: true
+    embed-resources: true
+editor: source
+execute:
+  cache: false
+editor_options:
+  chunk_output_type: console
+---
+
+# INITITATE
+
+```{r results='hide', message=FALSE}
+
+#' # INITIIEREN ####
+set.seed(192)
+.libPaths()
+
+library(toolboxH)
+library(Seurat)
+library(SeuratWrappers)
+library(here)
+library(ggplot2)
+library(sva)
+library(patchwork)
+library(BiocParallel)
+library(scDblFinder)
+library(pander)
+  require(ggsankey)
+  require(ggrepel)
+
+  require(dplyr)
+library(future) #https://satijalab.org/celllines/archive/v3.0/future_vignette.html
+options(future.globals.maxSize= 10*1024^3) # to prevent the error
+future.seed=TRUE # to care for proper random seeds
+ncores = 10 # in R conselo, 1, only mclapply is compatible with RSTUDIO
+plan("multicore", workers = ncores)
+
+RNGkind("L'Ecuyer-CMRG") # make random number working for mclapply https://bookdown.org/rdpeng/rprogdatascience/parallel-computation.html#the-parallel-package
+set.seed(192)
+
+knitr::opts_chunk$set(message = FALSE, warning = FALSE)
+```
+
+# AIM
+
+QC including qC cluster definition all species
+
+# Dataimport
+
+I
+```{r results='hide'}
+
+seurat = readRDS(here("R/results/h224_3_seurat_integrated_harmony_rpca_fastMNN_layersjoined.rds"))
+
+plot_ggSankey_hk(seurat@meta.data[, c("rpca_clusters", 'uniform_name_overview')] %>% data.table())
+plot_ggSankey_hk(seurat@meta.data[, c( "rpca_clusters",'species')] %>% data.table())
+plot_ggSankey_hk(seurat@meta.data[, c( "rpca_clusters",'lowQC_or_doublet')] %>% data.table())
+
+```
+
+
+Define core cell QC parameter
+```{r}
+
+core_cellparam = c("nFeature_RNA", 'pct_counts_in_top_50_genes',"pct.ribo",
+                   "nCount_RNA",  "pct.mito",  "pct.hb")
+
+
+```
+
+
+
+
+```{r results='hide'}
+testthat::test_that("All intended qc metrices are available in Seurat", expect_length(setdiff(c(core_cellparam), names(seurat@meta.data)),0))
+
+cellannopre3 = seurat@meta.data %>% data.table(keep.rownames = T)
+```
+
+
+
+# Filter  bad cluster
+
+
+
+
+```{r }
+ 
+lowQC_proz = cellannopre3[, .N, lowQC_cluster]
+lowQC_proz[, prozi := (N / sum(N)) %>% proz() ]
+
+
+cellannopre3[,.N, .(dbl_doubletsum_1gr0, dbl_doubletsumgr0, species)]
+cellannopre3[, dbl_doubletsumgr0 := ifelse(is.na(dbl_doubletsumgr0), dbl_doubletsum_1gr0, dbl_doubletsumgr0)]
+seurat$dbl_doubletsumgr0 = ifelse(is.na(seurat$dbl_doubletsumgr0), seurat$dbl_doubletsum_1gr0, seurat$dbl_doubletsumgr0)
+
+
+doublet2_proz = cellannopre3[, .N, dbl_doubletsumgr0]
+doublet2_proz[, prozi := (N / sum(N)) %>% proz() ]
+
+lowQC_or_doublet = cellannopre3[, .N, .(dbl_doubletsumgr0 | lowQC_cluster)]
+lowQC_or_doublet[, prozi := (N / sum(N)) %>% proz() ]
+
+```
+
+If any of the cells does not adhere to these cutoffs (`r lowQC_proz[lowQC_cluster==T, prozi]`) or is found to be positive in any doublet tests with expected doublet rate of 1% (`r doublet2_proz[dbl_doubletsumgr0==T, prozi]`), it is marked potential bad QC cell (`r lowQC_or_doublet[dbl_doubletsumgr0 ==T, prozi]`)
+
+
+On the base of this  clustering level, I will clusterwise define bad QC cells. However, I will additionally identify bad clusters based on the integrated object
+
+```{r results='hide',fig.width=10, fig.height=12}
+seurat$lowQC_cluster = cellannopre3[match_hk(colnames(seurat), cellannopre3$rn),lowQC_cluster]
+seurat$lowQC_cluster %>% mytable()
+
+seurat$dbl_doublet = seurat$dbl_doubletsumgr0
+cellannopre3$dbl_doublet = seurat$dbl_doubletsumgr0
+seurat$dbl_doublet %>% mytable()
+
+seurat$lowQC_or_doublet = seurat$dbl_doubletsumgr0 |seurat$lowQC_cluster
+cellannopre3[, lowQC_or_doublet := dbl_doubletsumgr0 |lowQC_cluster]
+seurat$lowQC_or_doublet %>% mytable()
+
+p1 = DimPlot(reduction = "umap.rpca", raster= FALSE,seurat, group.by = c("rpca_clusters","uniform_name_overview"), label  = T ) & guides(color = "none") 
+# p2 = DimPlot(reduction = "umap.rpca", raster= FALSE,seurat, group.by =  c('lowQC_cluster', 'dbl_doublet', 'lowQC_or_doublet')) &  theme(legend.position = "top")
+p2 = DimPlot(reduction = "umap.rpca", raster= FALSE,seurat, group.by =  c('lowQC_cluster', 'dbl_doublet',"lowQC_or_doublet"), shuffle = T ) &  theme(legend.position = "top")
+
+p1/p2
+
+```
+
+
+```{r results='hide', fig.width=15, fig.height=9}
+lowQC_or_doublet_df = rbind(
+  cbind(variable = "lowQC_cluster", cellannopre3[, .N, .(rpca_clusters, badqc = lowQC_cluster)]),
+  cbind(variable = "dbl_doublet", cellannopre3[, .N, .(rpca_clusters, badqc = dbl_doublet)]),
+  cbind(variable = "lowQC_or_doublet", cellannopre3[, .N, .(rpca_clusters, badqc = lowQC_or_doublet)])
+)
+
+lowQC_or_doublet_df[, prozent := N/sum(N), .(rpca_clusters, variable)]
+bad_clusterIDs_pre = lowQC_or_doublet_df[variable =='lowQC_or_doublet' & prozent>0.5 & badqc==TRUE,rpca_clusters] %>% sort()
+
+lowQC_or_doublet_df[, bad_cluster := rpca_clusters %in% bad_clusterIDs_pre]
+
+lowQC_or_doublet_df[, cells_in_cluster := sum(N), .(rpca_clusters, variable)]
+
+setorder(lowQC_or_doublet_df, -cells_in_cluster)
+lowQC_or_doublet_df[, rpca_clusters_ordered_by_N_decreasing := factor(rpca_clusters, levels = unique(rpca_clusters))]
+
+p4 = (ggplot(lowQC_or_doublet_df[badqc == TRUE], aes(rpca_clusters_ordered_by_N_decreasing, prozent, fill = variable, alpha = bad_cluster)) + geom_col(position = "dodge") + 
+        # facet_grid(.~ bad_cluster, scales = "free", space = "free", labeller = 'label_both') + 
+        geom_hline(yintercept = 0.5, lty = 2) + scale_y_continuous(label = label_percent(accuracy = 1), breaks = pretty_breaks(10))) + theme(legend.position = "top") + scale_alpha_manual(values = c(0.5, 1))
+```
+
+
+```{r results='hide', fig.width=15, fig.height=9}
+lowQC_or_doublet_dfcelltype = rbind(
+  cbind(variable = "lowQC_cluster", cellannopre3[, .N, .(uniform_name_overview, badqc = lowQC_cluster)]),
+  cbind(variable = "dbl_doublet", cellannopre3[, .N, .(uniform_name_overview, badqc = dbl_doublet)]),
+  cbind(variable = "lowQC_or_doublet", cellannopre3[, .N, .(uniform_name_overview, badqc = lowQC_or_doublet)])
+)
+
+lowQC_or_doublet_dfcelltype[, prozent := N/sum(N), .(uniform_name_overview, variable)]
+
+bad_celltype = lowQC_or_doublet_dfcelltype[variable =='lowQC_or_doublet' & prozent>0.5 & badqc==TRUE,uniform_name_overview]
+
+lowQC_or_doublet_dfcelltype[, bad_cluster_celltype := uniform_name_overview %in% bad_celltype]
+
+lowQC_or_doublet_dfcelltype[, cells_in_cluster := sum(N), .(uniform_name_overview, variable)]
+
+setorder(lowQC_or_doublet_dfcelltype, -cells_in_cluster)
+lowQC_or_doublet_dfcelltype[, uniform_name_overview_ordered_by_N_decreasing := factor(uniform_name_overview, levels = unique(uniform_name_overview))]
+
+p4_celltype = (ggplot(lowQC_or_doublet_dfcelltype[badqc == TRUE], aes(uniform_name_overview_ordered_by_N_decreasing, prozent, fill = variable, alpha = bad_cluster_celltype)) + geom_col(position = "dodge") + 
+                 # facet_grid(.~ bad_cluster_celltype, scales = "free", space = "free", labeller = 'label_both') + 
+                 geom_hline(yintercept = 0.5, lty = 2) + scale_y_continuous(label = label_percent(accuracy = 1), breaks = pretty_breaks(10))) + theme(legend.position = "top") + scale_alpha_manual(values = c(0.5, 1)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+
+
+```{r results='hide', fig.width=15, fig.height=20}
+p55 = DimPlot(reduction = "umap.rpca", raster= FALSE,seurat, group.by = c("rpca_clusters",'lowQC_or_doublet_cluster','uniform_name_overview' ), label = T, shuffle = T) & NoLegend()
+(p4+p4_celltype)/p55
+```
+
+```{r}
+jpeg2(here("R/results/h225_4_defining_bad_clusters_details1_integrated.jpeg"), 14,10)
+plot((p4+p4_celltype)/p55)
+dev.off()
+```
+
+
+
+## show problems of problematic cell clusters
+```{r}
+plot_qc_with_cutoffs <- function(cellannotation, stratifycol, doubletcol, core_cellparam,qc_cutofftable) {
+  plot1 = ggplot(melt(cellannotation, id.vars = c(stratifycol,'species'), measure.vars = core_cellparam), aes( x=.data[[stratifycol]],y=value, fill =species)) +
+    geom_violin(scale = "width")  + 
+    facet_wrap(~variable, 
+               scales= "free") + 
+    theme(axis.text.x = element_text(angle = 90, hjust = 0, vjust = 0.4), 
+          legend.position = "top")  + 
+    guides(fill = "none")+ geom_hline(data = qc_cutofftable, aes(yintercept = value, col = species), lty = 2)
+  
+  plot2 = ggplot(cellannotation, aes( .data[[stratifycol]], fill =.data[[doubletcol]])) +
+    geom_bar(position = "fill")  + 
+    theme(axis.text.x = element_text(angle = 90, hjust = 0, vjust = 0.4), 
+          legend.position = "top")
+  plot1 + plot2 + plot_layout(widths = c(4,1))
+    
+}
+
+
+cutoff_hamsterMA = read_excel2(here("R/results/h221_5_qc_cutoffcluster_hamsterMA.xlsx")) %>% .[,species:="hamsterMA"]
+
+cutoff_hamsterPR = read_excel2(here("R/results/h222_2_qc_cutoffcluster_hamsterPR.xlsx")) %>% .[,species:="hamsterPR"]
+
+cutoff_human = read_excel2(here("R/results/h220_5_qc_cutoffcluster_human.xlsx")) %>% .[,species:="human"]
+
+cutoff_cluster = rbind(cutoff_hamsterMA,
+                       cutoff_hamsterPR,
+                       cutoff_human)
+
+p16all = plot_qc_with_cutoffs(cellannotation = cellannopre3[],stratifycol = "rpca_clusters",doubletcol = "dbl_doubletsumgr0",
+                                          
+                                          qc_cutofftable  = cutoff_cluster[variable %in% core_cellparam[c(1,4,5)]],
+                                          core_cellparam = core_cellparam[c(1,4,5)]
+                                            
+                                            )+ 
+    plot_annotation(title = "bad clusters integrated rpca", "not filtered")
+
+p16all + plot_layout(ncol = 1, nrow=2)
+
+p16a = plot_qc_with_cutoffs(cellannotation = cellannopre3[rpca_clusters %in% bad_clusterIDs_pre],stratifycol = "rpca_clusters",doubletcol = "dbl_doubletsumgr0",
+                                          
+                                          qc_cutofftable  = cutoff_cluster,
+                                          core_cellparam = core_cellparam
+                                            
+                                            )+ 
+    plot_annotation(title = "bad clusters integrated rpca", "not filtered")
+
+
+p16b = plot_ggSankey_hk(cellannopre3[rpca_clusters %in% bad_clusterIDs_pre,.(rpca_clusters, uniform_name_overview )])
+
+
+
+p16a+p16b  +plot_layout(widths = c(4,1,2))
+
+```
+
+```{r}
+jpeg2(here("R/results/h225_4_definign_bad_clusters_details2_integrated.jpeg"), 20,10)
+plot(p16a+p16b  +plot_layout(widths = c(4,1,2)))
+dev.off()
+
+```
+
+
+We exclude all these clusters but 40 as it is largely confounded with Plasmablasts and 30 from neutrophils
+
+```{r results='hide'}
+bad_clusterIDs = setdiff(bad_clusterIDs_pre, c(30,40))
+seurat$lowQC_or_doublet_clusterIntegrated = seurat$rpca_clusters %in% bad_clusterIDs
+tableeintraege = seurat$lowQC_or_doublet_clusterIntegrated %>% mytable() %>% unlist()
+
+```
+
+As bad cluster, I consider only cluster not excluding a whole celltype. Hence, I mark clusters `r bad_clusterIDs %>% pander()`, i.e. N= `r tableeintraege['observed2'] %>% as.character()` I do not exclude the other cluster, as it corresponds to a single celltype
+
+
+```{r}
+cellannopre3b = seurat@meta.data %>% as.data.table(keep.rownames = T)
+draussen = cellannopre3b[,.N, .(lowQC_or_doublet_clusterIntegrated, uniform_name_overview)]
+draussen[, prozent := N/sum(N) , uniform_name_overview]
+draussen[, prozent2 :=prozent %>% proz()]
+
+draussen[lowQC_or_doublet_clusterIntegrated==T][order(-prozent)][,.(uniform_name_overview,N, prozent2)] %>% pander()
+
+# 
+cellannopre3b[rpca_clusters==25 , .N, .(rpca_clusters,uniform_name_overview,lowQC_or_doublet_clusterIntegrated, species )][order(N)] %>% .[,proz := (N/sum(N)) %>% proz()] %>% knitr::kable()
+# seurat2 = seurat[, seurat$lowQC_or_doublet_clusterIntegrated==F]
+```
+
+
+
+# filter  also already filtered cells
+
+```{r}
+seurat$QC_bad_2_exclude = seurat$lowQC_or_doublet_cell |seurat$lowQC_or_doublet_clusterIntegrated
+
+tableeintraege_single = seurat$lowQC_or_doublet_cell %>% mytable() %>% unlist()
+
+tableeintraege_all = seurat$QC_bad_2_exclude %>% mytable() %>% unlist()
+
+```
+
+In addition to the bad cells due to bad clusters on single study level and independently of clusters defined bad cells there (jointly `r tableeintraege_single["observed2"]`) now we exclude the bad cluster based on integration clustering (`r tableeintraege['observed2']`, we totally exclude as bad QC: `r tableeintraege_all['observed2']` cells
+
+```{r}
+seurat2 = seurat[, seurat$QC_bad_2_exclude==F]
+```
+
+We can go with the uniform name overview, as it is largely compatible with clusters.
+```{r}
+plot_ggSankey_hk(seurat2@meta.data[, c("rpca_clusters", "uniform_name_overview")] %>% data.table())
+```
+
+Regarding cd4 and cd8 t cells
+```{r}
+cellannofilt = seurat2@meta.data %>% data.table()
+cellannofilt[uniform_name_overview=="T_Cells", .N, rpca_clusters]
+
+p_tcell = plot_ggSankey_hk(cellannofilt[rpca_clusters %in% rpca_clusters[uniform_name_overview=="T_Cells"], .(rpca_clusters, uniform_name_overview)] %>% .[grepl("T_C", uniform_name_overview)])
+
+pdf(here("R/results/h225_4_clusters_unassigned_TCells.pdf"),6,6)
+p_tcell
+dev.off()
+```
+
+however, due to the not clear of the largest cluster and the not so high number these are marked as unknown 
+```{r}
+cellannofilt[,unique(uniform_name_overview)]
+seurat2$uniform_name_overview = ifelse(is.na(seurat2$uniform_name_overview) | seurat2$uniform_name_overview=="T_Cells", "unknown", seurat2$uniform_name_overview)
+
+cellannofilt2 = seurat2@meta.data %>% data.table(keep.rownames = T)
+cellannofilt2[,unique(uniform_name_overview)]
+
+```
+
+
+```{r}
+cellannofilt2[, .N, .(species, uniform_name_overview)]
+
+```
+
+# repeat integration with QC good cells, only
+
+
+```{r}
+seurat2[["RNA"]] <- split(seurat2[["RNA"]], f = seurat2$run10x)
+```
+
+```{r integratelayersrpca}
+seurat2 <- IntegrateLayers(
+  object = seurat2, method = RPCAIntegration,
+  orig.reduction = "pca", new.reduction = 'integrated.rpca.v2',
+  verbose = TRUE)
+```
+
+```{r}
+seurat2 <- FindNeighbors(seurat2, reduction = 'integrated.rpca.v2', dims = 1:30)
+seurat2 <- FindClusters(seurat2,resolution = 2, cluster.name = 'rpca_clusters.v2')
+seurat2 <- RunUMAP(seurat2, reduction = "integrated.rpca.v2", dims = 1:30, reduction.name = 'umap.rpca.v2')
+p5 <- DimPlot(
+  seurat2, reduction = "umap.rpca.v2",
+  group.by = c("run10x", "uniform_name_overview", "rpca_clusters.v2", "species"),
+  combine = TRUE, 
+  raster= FALSE, 
+  label = T) & NoLegend()
+p5
+```
+
+
+
+# SAVE plot
+```{r}
+jpeg2(here("R/Results/h225_4_seurat_integrated_rpca_QCfiltered.jpeg"), 24, 18)
+plot(p5)
+dev.off()
+
+```
+
+Once integrative analysis is complete, you can rejoin the layers - which collapses the individual datasets together and recreates the original `counts` and `data` layers. You will need to do this before performing any differential expression analysis. However, you can always resplit the layers in case you would like to reperform integrative analysis.
+
+```{r joinlayers}
+seurat2 <- JoinLayers(seurat2)
+seurat2
+```
+
+```{r saving}
+cellanno = seurat@meta.data %>% as.data.table(keep.rownames = T)
+fwrite(cellanno, here("R/results/h225_4_qc_integrated_rpca_cellanno.txt.gz"))
+
+cellannofiltered3 = seurat2@meta.data %>% as.data.table(keep.rownames = T)
+fwrite(cellannofiltered3, here("R/results/h225_4_qc_integrated_rpca_cellanno_FILTERED.txt.gz"))
+
+
+saveRDS(seurat2, here("R/results/h225_4_seurat_integrated_rpca_FILTERED.RDS"))
+```
+
+# finalize
+
+```{r}
+finalizeSkript()
+
+```

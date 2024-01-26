@@ -1,0 +1,220 @@
+---
+title: "h295_2_calc_spearman_r2_humanisation_perMedian"
+format:
+  html:
+    df-print: paged
+    fig-width: 13
+    fig-height: 7
+    code-fold: true
+    code-summary: "Show the code"
+    toc: true
+    toc-location: left
+    toc-depth: 3
+    number-sections: false
+    standalone: true
+    embed-resources: true
+editor: source
+execute:
+  cache: false
+editor_options:
+  chunk_output_type: console
+---
+
+# INITITATE
+
+```{r results='hide', message=FALSE}
+
+#' # INITIIEREN ####
+
+set.seed(192)
+.libPaths()
+
+
+library(toolboxH)
+library(Seurat)
+library(SeuratWrappers)
+library(here)
+library(ggplot2)
+library(patchwork)
+library(pander)
+require(ggrepel)
+
+require(dplyr)
+
+set.seed(192)
+
+knitr::opts_chunk$set(message = FALSE, warning = FALSE)
+```
+
+# AIM
+check  R2 score
+
+# Dataimport
+
+```{r results='hide'}
+todo = data.table(fn = dir(here("python/results/07_humanisationR2/"),recursive = T, full.names = T,  pattern = "ma\\.csv$|pr\\.csv$"))
+todo = todo[grepl("_archive", fn)==F]
+
+todo[, species := ifelse(grepl("/ma/", fn), "ma", "pr")]
+todo[,.N,species]
+todo[, num := .I]
+
+todo[, type := ifelse(grepl("meta", fn), "meta", "expression")]
+todo[, .N, type]
+todo[, celltype := str_replace_all(fn %>% str_split(pattern = "/") %>% unlist() %>% last(), "B05_meta_|B05_gene_expression_|_ma\\.csv$|_pr\\.csv$", ""), num]
+
+todo2 = dcast.data.table(todo, species +celltype~ type, value.var = "fn")
+todo2[, id:= paste(species, celltype)]
+
+require(confintr)
+erglist = lapply(todo2$id %>% unique(), function(myyid){
+  # myyid=todo2$id[1]
+  message("working on ", myyid)
+  mytodo_gx =todo2[id ==myyid , expression]
+  mydata = fread(mytodo_gx)
+  mydatam = melt(mydata, id.vars = "rn")
+  mydatam
+  
+  mytodo_meta =todo2[id ==myyid , meta]
+  mymeta = fread(mytodo_meta)
+  mymeta[,.N, dataset]
+  
+
+  
+  
+  mydat = merge(mymeta, mydatam, by = "rn", all.y=T, sort = F)
+
+  mydat2 = mydat[, .(medianvalue = median(value)), .(species, celltype, dataset, variable)]
+  qlist1 = venn2(mydat2[dataset=="human", variable], mydat2[dataset=="humanized hamster", variable], mytitle = myyid)
+  
+  mydat2[, dataset2 := str_replace_all(dataset, "MA$|PR$", "")]
+  mydat2[, comparison := ifelse('ma' %in% species, "ma", "pr")]
+  
+  mydat3 = dcast.data.table(mydat2,  comparison+celltype + variable  ~ dataset2, value.var = "medianvalue" )
+  mydat3
+  
+  p_num__hum_humanized = ggplot(mydat3, aes(human,  `humanized hamster`)) + geom_point() + geom_smooth()
+  
+  mydat2[, rangnum := rank(medianvalue, na.last = T), .(dataset2, celltype)]
+  mydat4 = dcast.data.table(mydat2, comparison + celltype + variable  ~ dataset2, value.var = "rangnum" )
+  mydat4
+  p_rank__hum_humanized = ggplot(mydat4, aes(human,  `humanized hamster`)) + geom_point() + geom_smooth() + ggtitle(todo2[id ==myyid, paste(species," // ", celltype)])
+  
+  p_num__hamster_humanized = ggplot(mydat3, aes(hamster,  `humanized hamster`)) + geom_point() + geom_smooth()
+  p_rank__hamster_humanized = ggplot(mydat4, aes(hamster,  `humanized hamster`)) + geom_point() + geom_smooth() + ggtitle(todo2[id ==myyid, paste(species," // ", celltype)])
+  
+  
+  stats_pearson__hum_humanized = mydat3[,cor.test(human, `humanized hamster`)]
+  stats_spearman__hum_humanized = mydat3[,cor.test(human, `humanized hamster`,  method = c( "spearman"))]
+  
+  stats_pearson__hamster_humanized = mydat3[,cor.test(hamster, `humanized hamster`)]
+  stats_spearman__hamster_humanized = mydat3[,cor.test(hamster, `humanized hamster`,  method = c( "spearman"))]
+  
+    stats_pearson__human_hamster = mydat3[,cor.test(human, hamster )]
+  stats_spearman__human_hamster = mydat3[,cor.test(human, hamster,  method = c( "spearman"))]
+  
+  resi = c()
+  resi$data_num = mydat3
+  resi$data_rank = mydat4
+  resi$p_num__hum_humanized = p_num__hum_humanized
+  resi$p_rank__hum_humanized = p_rank__hum_humanized
+  resi$p_num__hamster_humanized = p_num__hamster_humanized
+  resi$p_rank__hamster_humanized = p_rank__hamster_humanized
+  
+  resi$stats_pearson__hum_humanized = stats_pearson__hum_humanized
+  resi$stats_spearman__hum_humanized = stats_spearman__hum_humanized
+  resi$stats_pearson__hamster_humanized = stats_pearson__hamster_humanized
+  resi$stats_spearman__hamster_humanized = stats_spearman__hamster_humanized
+  
+  resi$ci95_pearson_hum_humanized = mydat3[,ci_cor(human, `humanized hamster`)$interval  %>% signif(.,4) %>% paste(., collapse = "-")]
+  # resi$ci95_spearman = mydat3[,ci_cor(human, `humanized hamster`, method = "spearman", type = "bootstrap", R = 999)$interval  %>% signif(.,4) %>% paste(., collapse = "-")]
+  
+  
+  
+  
+  resi$compactrow = data.table(species = todo2[id ==myyid, species],
+                               celltype = todo2[id ==myyid, celltype],
+                               r_pearson_hum_humanized =  stats_pearson__hum_humanized$estimate,
+                               r_spearman_hum_humanized =  stats_spearman__hum_humanized$estimate,
+                               p_pearson_hum_humanized =  stats_pearson__hum_humanized$p.value,
+                               p_spearman_hum_humanized =  stats_spearman__hum_humanized$p.value,
+                               
+                               r_pearson_hamster_humanized =  stats_pearson__hamster_humanized$estimate, 
+                               r_spearman_hamster_humanized =  stats_spearman__hamster_humanized$estimate,
+                               p_pearson_hamster_humanized =  stats_pearson__hamster_humanized$p.value,
+                               p_spearman_hamster_humanized =  stats_spearman__hamster_humanized$p.value,
+                               
+                                   r_pearson_human_hamster =  stats_pearson__human_hamster$estimate, 
+                               r_spearman_human_hamster =  stats_spearman__human_hamster$estimate,
+                               p_pearson_human_hamster =  stats_pearson__human_hamster$p.value,
+                               p_spearman_human_hamster =  stats_spearman__human_hamster$p.value
+                               
+  )
+  resi
+  
+})
+
+ergtab = lapply(erglist, function(mylist) mylist$compactrow) %>% rbindlist()
+
+
+ggplot(ergtab, aes(r_pearson_hum_humanized , r_spearman_hum_humanized, col = celltype, pch = species, label = celltype)) + geom_point(size = 4, alpha = 0.5) + geom_text_repel() + geom_abline(slope = 1, intercept = 0, lty = 2) + xlim(c(0,1))+ ylim(c(0,1)) + facet_grid(.~species)
+
+ggplot(ergtab, aes(r_pearson_hamster_humanized , r_spearman_hamster_humanized, col = celltype, pch = species, label = celltype)) + geom_point(size = 4, alpha = 0.5) + geom_text_repel() + geom_abline(slope = 1, intercept = 0, lty = 2) + xlim(c(0,1))+ ylim(c(0,1)) + facet_grid(.~species)
+```
+
+# supp plot
+```{r}
+ergtabm_spearman = melt(ergtab, id.vars = c("species", "celltype"), measure.vars =  c('r_spearman_human_hamster' , 'r_spearman_hum_humanized'))
+
+
+
+
+
+ergtabm_spearman[, species2 := ifelse(species == "ma", "M. auratus", 'P. roborovskii')]
+NogpaletteReihe <-  c("#CB769E", "#DE639A", "#A85C85", "#0081AF", "#4F6D7A", "#7C6A0A", "#368F8B", "#246A73", "#5CC1BC", "#62C370", "#F7C548", "#F97E44", "#FB3640", "#B7245C", "#0D3B66", "#3E2F5B", "#B2675E", "#644536")
+
+
+
+p_spearman = ggplot(ergtabm_spearman, aes(celltype %>% str_replace_all("_", " "), value^2, alpha = variable, fill = celltype)) +
+  theme_minimal(base_size = 16) + 
+  labs(alpha = "")+
+  geom_col(position = "dodge") + 
+  facet_grid(~species2) + 
+  # scale_alpha_manual(values = c(1, 0.4)) + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust=1),
+        legend.position = "top")+ 
+  scale_y_continuous(breaks = pretty_breaks(8))+
+  scale_fill_manual(values = NogpaletteReihe) +
+  guides(fill = "none") + scale_alpha_manual(values  = c(0.5, 1), labels = c(bquote(R[before~humanization]^2), bquote(R[humanized]^2))) + ylab("Correlation gene expresion hamster vs. human") + xlab("")
+
+p_spearman 
+
+fwrite(ergtabm_spearman, file = here("R/results/h295_2_ergtabm_spearman.csv"))
+
+jpeg(here("R/results/h295_2_p_spearman_supplfig.jpeg"), width = 10, height = 8, units = "in", res = 300)
+p_spearman
+dev.off()
+
+```
+
+# export for Figure 2
+```{r}
+erglist[[1]]
+data_scatter_medianvalue = lapply(erglist, function(mylist) mylist$data_num) %>% rbindlist()
+data_scatter_medianvalue$datatype = "value"
+
+data_scatter_medianrank = lapply(erglist, function(mylist) mylist$data_rank) %>% rbindlist()
+data_scatter_medianrank$datatype = "rank"
+
+
+data_scatter = rbind(data_scatter_medianvalue, data_scatter_medianrank)
+showNA(data_scatter, showAllNoNA = F)
+data_scatter
+setnames(data_scatter, "humanized hamster", "humanized_hamster")
+fwrite(data_scatter, file = here("R/results/h295_2_data_scatter.csv"))
+
+```
+```{r}
+finalizeSkript()
+```
+

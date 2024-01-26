@@ -61,7 +61,7 @@
   - h245_7_de_list.xlsx									-> code: */Figure1_and_FigureS2/code_inputdata in this order:  h210_1* > h212_2* > h213_2* > h214_2* > h215_2* > h216_2* > h217_2* > h218_3* > h219_3* > h220_5* > h221_5* > h222_2* > h224_3* > h225_5* > h226_1* > h227_2* > h228_3*  followed by scripts in folder */Supplementary_Tables/scripts  > h235_3* > h240_3* > h245_7*
 
 - **FigureS1**
-  - h224_3_overlap_genes_all_datasets_plotdat.txt.gz				-> code: TO DO
+  - h224_3_overlap_genes_all_datasets_plotdat.txt.gz				-> code: */Figure1_and_FigureS2/code_inputdata in this order:  h210_1* > h212_2* > h213_2* > h214_2* > h215_2* > h216_2* > h217_2* > h218_3* > h219_3* > h220_5* > h221_5* > h222_2* > h224_3*
 
 - **FigureS3**
 	- Roborovski_hamster
@@ -84,7 +84,7 @@
 		- **Immature_Neutrophils_type1**	-> code: */supplementS3_intermediate/Syrian_hamster/B01_Immature_Neutrophils_type1_h270.py; */supplementS3_intermediate/Syrian_hamster/B02_ma_Immature_Neutrophils_type1.py
 		- **Classical_Monocytes**		-> code: */supplementS3_intermediate/Syrian_hamster/B01_monos_B_NK_pr.py; */supplementS3_intermediate/Syrian_hamster/B02_ma.py
 		- **decoded_objects_v2**		-> code: */supplementS3_intermediate/Syrian_hamster/B05_save_decoded_object.py; */supplementS3_intermediate/Syrian_hamster/B05_save_decoded_object_type1.py
-	- h295_2_ergtabm_spearman.xlsx 			-> code: TO DO
+	- h295_2_ergtabm_spearman.xlsx 			-> code: */Figure3/h295_2_calc_spearman_r2_humanisation_perMedian.qmd
 
 - **Figure_S4**
 	- Roborovski_hamster
@@ -108,15 +108,22 @@
 
 - **VAE:**
 	- **VAE_input_data**
-		- h228_1_qc_integrated_rpca_cellanno_FILTEREDqc_FILTEREDpureCells.txt 		-> TO DO
-		- h228_2_qc_integrated_rpca_cellanno_FILTEREDqc_FILTEREDpureCells.txt		-> TO DO
-		- h227_2_humanPR_rpca_FILTERED_JOINED_gxmatrix.txt				-> TO DO
-		- h227_2_humanPR_rpca_FILTERED_JOINED_featureanno.txt				-> TO DO
-		- h227_2_humanPR_rpca_FILTERED_JOINED_cellanno.txt				-> TO DO
-		- h227_2_humanMA_rpca_FILTERED_JOINED_cellanno.txt				-> TO DO
-		- h227_2_humanMA_rpca_FILTERED_JOINED_featureanno.txt				-> TO DO
-		- h227_2_humanMA_rpca_FILTERED_JOINED_gxmatrix.txt				-> TO DO
-		- h270_1_clusterlabels_in_h228_3_seurat.txt					-> TO DO
+
+		- h228_1_qc_integrated_rpca_cellanno_FILTEREDqc_FILTEREDpureCells.txt 	-> code: */Figure1_and_FigureS2/code_inputdata in this order:  	-> h210_1* > h212_2* > h213_2* > h214_2* > h215_2* > h216_2* > h217_2* > h218_3* > h219_3* > h220_5* > h221_5* > h222_2* > h224_3*   followed by scripts  */VAE/input_processing/h225_4_QC_integrated_clusters_allspecies.qmd and  */VAE/input_processing/h228_1_define_pure_celltypes_per_cluster_for_export.R
+
+		- h228_2_qc_integrated_rpca_cellanno_FILTEREDqc_FILTEREDpureCells.txt		-> code: */Figure1_and_FigureS2/code_inputdata in this order:  	-> h210_1* > h212_2* > h213_2* > h214_2* > h215_2* > h216_2* > h217_2* > h218_3* > h219_3* > h220_5* > h221_5* > h222_2* > h224_3* > h225_5*  followed by script */VAE/input_processing/h228_2_define_pure_celltypes_per_cluster_for_export.R
+
+		For
+		- h227_2_humanPR_rpca_FILTERED_JOINED_gxmatrix.txt
+		- h227_2_humanPR_rpca_FILTERED_JOINED_featureanno.txt
+		- h227_2_humanPR_rpca_FILTERED_JOINED_cellanno.txt
+		- h227_2_humanMA_rpca_FILTERED_JOINED_cellanno.txt
+		- h227_2_humanMA_rpca_FILTERED_JOINED_featureanno.txt
+		- h227_2_humanMA_rpca_FILTERED_JOINED_gxmatrix.txt
+		-> code: */Figure1_and_FigureS2/code_inputdata in this order:  h210_1* > h212_2* > h213_2* > h214_2* > h215_2* > h216_2* > h217_2* > h218_3* > h219_3* > h220_5* > h221_5* > h222_2* > h224_3* > h225_5* > h226_1* > h227_2*
+
+		- h270_1_clusterlabels_in_h228_3_seurat.txt					-> code: */Figure1_and_FigureS2/code_inputdata scripts starting with following prefix in this order: h210_1* > h212_2* > h213_2* > h214_2* > h215_2* > h216_2* > h217_2* > h218_3* > h219_3* > h220_5* > h221_5* > h222_2* > h224_3* > h225_5* > h228_3 followed by script */VAE/input_processing/h270_1_check_vincent_cellIDs.qmd
+
 		- v227_2_PR_var.csv								-> code: */VAE/input_processing/v227_2_build_anndata.ipynb
 		- v227_2_MA_var.csv								-> code: */VAE/input_processing/v227_2_build_anndata.ipynb
 		- 227_2_PR_obs.csv								-> code: */VAE/input_processing/v227_2_build_anndata.ipynb
