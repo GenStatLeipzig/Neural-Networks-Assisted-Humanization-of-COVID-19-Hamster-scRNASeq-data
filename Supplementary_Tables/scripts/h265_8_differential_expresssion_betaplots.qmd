@@ -1,0 +1,683 @@
+---
+title: "h265_8_FDR20_differential_expresssion_betaplots.qmd"
+format:
+  html:
+    df-print: kable
+    fig-width: 10
+    fig-height: 7
+    code-fold: true
+    code-summary: "Show the code"
+    toc: true
+    toc-location: left
+    toc-depth: 3
+    number-sections: false
+    standalone: true
+    embed-resources: true
+editor: source
+execute:
+  cache: false
+editor_options:
+  chunk_output_type: console
+---
+
+# INITITATE
+
+```{r}
+
+#' # INITIIEREN ####
+rm(list = setdiff(ls(), ""))
+.libPaths()
+
+library(toolboxH)
+library(Seurat)
+library(SeuratDisk)
+
+library(here)
+library(ggplot2)
+library(scales)
+library(ggthemes)
+# BiocManager::install("scRNAseq")
+library(SingleR)
+library(BiocParallel)
+library(patchwork)
+library(harmony)
+require(gprofiler2)
+
+
+
+```
+
+# AIM
+
+BEtaplot and calc of all pairwise interspecies disease mappings
+# LOAD
+
+```{r}
+
+diffex = fread(here("R/results/h240_3_DE_.txt.gz") )
+done =  read_excel2(here("R/results/h240_3_DE_TODOoverview.xlsx"))
+
+```
+# preparations
+## define pairwise comparisons
+```{r}
+grades_hs = done[species =="human", unique(severity_rekateg)]
+grades_ma = done[species =="hamsterMA", unique(severity_rekateg)]
+grades_pr = done[species =="hamsterPR", unique(severity_rekateg)]
+
+todo_pre = rbind(expand.grid(celltype = unique(done$celltype), human_contrast1 = grades_hs, hamster = 'MA', hamster_contrast1 = grades_ma, stringsAsFactors = F) %>% data.table(),
+                 expand.grid(celltype = unique(done$celltype), human_contrast1 = grades_hs, hamster = 'PR', hamster_contrast1 = grades_pr, stringsAsFactors = F) %>% data.table()
+)
+todo_pre
+todo_pre[,longid_hamster := paste(paste0("hamster", hamster), celltype, hamster_contrast1)]
+todo_pre[,longid_human := paste("human" , celltype, human_contrast1)]
+
+
+done[, longid:= paste(species, celltype, severity_rekateg)]
+
+todo_pre[, id_hamster := done[match_hk(todo_pre$longid_hamster, done$longid),id]]
+todo_pre[, id_human := done[match_hk(todo_pre$longid_human, done$longid),id]]
+
+
+```
+
+## abgleich mit berechneten contrasten
+```{r}
+qlist55 = venn3(todo_pre$longid_hamster,todo_pre$longid_human, done$longid)
+str(qlist55)
+todo = todo_pre[longid_hamster %in% done$longid &
+                  longid_human %in% done$longid ]
+
+
+
+```
+
+
+```{r}
+qlist55b = venn3(todo$longid_hamster,todo$longid_human, done$longid)
+qlist55b
+```
+
+
+
+## count FDR 20% genes
+excluding QC genes, 
+```{r}
+searchtag = "^RP[SL][[:digit:]]|^RPLP[[:digit:]]|^RPSA|Malat1|Mt-|KCNQ1ot1|Ugdh-AS1|EEF1a[0-9]"
+
+message("REmoving QC likely genes with searchtag ", searchtag)
+diffex2 = diffex[grepl(searchtag, symbol, ignore.case = T)==F]
+message("Removing ", uniqueN(diffex$symbol) - uniqueN(diffex2$symbol), " of ",uniqueN(diffex$symbol)," genes, i.e.\n",grep(searchtag, diffex$symbol, value = T, ignore.case = T) %>% unique() %>%  sort(decreasing = T) %>% paste(collapse = ", ")) # Ugdh-AS1 is not Ugdh
+
+diffex2[, p_BH := adj.P.Val] 
+diffex2[,id2 := paste(id, species, celltype, contrast1)]
+n_fdrok = diffex2[ , .(n_genes = uniqueN(symbol),
+                       n_fdr = uniqueN(symbol[p_BH<=0.2])) ,
+                   .(id, species, celltype, contrast1, id2)]   
+
+n_fdrok[, contrast1 := factor(contrast1,levels = c("3", "4u5", "7", "d2", "d3", "d5", "e14", "ld_D2", "ld_D3","hd_D2", "hd_D3"))]
+
+
+n_fdrok[, proz_fdr := proz(n_fdr/n_genes, stellen = 0)]
+
+p1 = ggplot(n_fdrok, aes(reorder(celltype, -n_fdr),n_fdr,label= proz_fdr, fill = contrast1, col = contrast1)) +
+  geom_col( col = "black",linewidth = 0.2, position = position_dodge(width = 0.9)) + 
+  theme_minimal(base_size = 14) +
+  geom_text(position = position_dodge(width = 0.9),hjust = -0.1, angle  = 90, size = 2.1, show.legend = F)+
+  theme(axis.text.x = element_text(angle =90, vjust  = 0.4, hjust = 1))   + facet_grid(.~species, scales= "free") + xlab("") + scale_y_continuous(breaks = pretty_breaks(10)) + ggtitle("N genes diff. expressed at FDR 20%") + 
+  labs(fill = "Contrast\nvs.\nControl")
+p1
+
+jpeg2(here("R/results/h265_8_FDR20_N_genes_diffexp_FD10_filteredMitoRibo_batchAdj.jpeg"), 9,5)
+p1
+dev.off()
+```
+
+
+# beta plot
+
+```{r}
+
+beta_plot <- function(x, y, xQval, yQval, fdrControl = 0.05, showPlot = TRUE, showfits=c("all", "individual", "none"),pointsize=2, r_digits=3, label  = NULL,segment_alpha=0.3,text_alpha = 0.8, showNonsignific_points = F,
+                      x_genes4intersectmake = NULL,
+                      y_genes4intersectmake = NULL,
+                      plot_title = "", 
+                      plot_subtitle="",
+                      compareOnlyBothSignificant=T){
+
+  
+  if(is.null(x_genes4intersectmake)==F &
+     is.null(y_genes4intersectmake)==F) {
+    message("Making intersect from given paramters ",deparse(substitute(x_genes4intersectmake))," and ",deparse(substitute(y_genes4intersectmake)))
+    
+    x_dt = data.table(x, xQval, x_genes4intersectmake)
+    y_dt = data.table(y, yQval, y_genes4intersectmake)
+    
+    qist1 = toolboxH::venn2(x_dt$x_genes4intersectmake, y_dt$y_genes4intersectmake, mytitle = "Intersect from x and y")
+    x_dt2 = x_dt[x_genes4intersectmake %in% qist1$q1] 
+    y_dt2 = y_dt[y_genes4intersectmake %in% qist1$q1] 
+    
+    xy_dt2 = merge(x_dt2, y_dt2, by.x = "x_genes4intersectmake", by.y = "y_genes4intersectmake")
+    stopifnot(identical(nrow(x_dt2), nrow(xy_dt2)))
+    stopifnot(identical(nrow(y_dt2), nrow(xy_dt2)))
+    x = xy_dt2$x
+    xQval = xy_dt2$xQval
+    
+    y = xy_dt2$y
+    yQval = xy_dt2$yQval
+    
+    intersectgenes = xy_dt2$x_genes4intersectmake
+  } else intersectgenes = label
+  
+  #  checks prior to plot
+  
+  stopifnot({
+    !anyNA(
+      c(x, 
+        y, 
+        xQval, 
+        yQval, 
+        fdrControl)
+    ) &
+      length(x) == length(y) &
+      length(x)!=0 &
+      length(y)!=0 &
+      length(xQval)!=0 &
+      length(yQval)!=0 &
+      length(xQval) == length(yQval) &
+      length(x) == length(xQval) &
+      length(y) == length(yQval) &
+      min(xQval) >= 0 & max(xQval) <= 1  &
+      min(yQval) >= 0 & max(yQval) <= 1 &
+      fdrControl >= 0 & fdrControl <= 1 &
+      ( length(label)==0 | length(label)== length(x)) 
+  })
+  
+  # consolidate for plotting and annotate significancy based on fdrControl for color plotting
+  
+  dat_pre <- data.table(
+    x = x,
+    y = y,
+    x.q = xQval,
+    y.q = yQval
+    
+    
+    # add count same number
+  )
+  dat_pre[,effects_same_direction := sign(x) == sign(y)]
+  
+  if(is.null(intersectgenes)==F) {
+    dat_pre$features = intersectgenes
+    dat_pre = moveColFront(dat_pre, 'features')
+  }
+  
+  dat_pre[,coloring := ifelse((x.q <= fdrControl) & (y.q <= fdrControl), "x & y",
+                              ifelse(x.q <= fdrControl, "x",
+                                     ifelse(y.q <= fdrControl, "y", "none")
+                              )
+  )]
+  
+  dat_pre[, coloring:= factor(coloring, levels = c("x", "y", "x & y", "none"))]
+  
+  if(compareOnlyBothSignificant==T) dat = dat_pre[coloring=="x & y"] else dat= copy(dat_pre)
+  
+  # check for zero significant associations in x & y -> nothing to plot
+  if(all(dat$x.q > fdrControl) & all(dat$y.q > fdrControl)){
+    warning(paste0("No significant associations found for q<=", 
+                   fdrControl, 
+                   ". Maybe try setting a higher FDR?"))
+    erg= c()
+    erg$data = dat_pre
+    erg$model$r.squared = NA_real_
+    return(erg)
+  } 
+  
+  # calculate r-squared of model in assocs that are at least significant in x or y
+  mod <- dat[coloring != "none", summary(lm(y~x+0))]
+  
+  # get the annotation
+  r2 <- bquote(R^2* '='~.(signif(mod$r.squared,r_digits)))
+  
+  # get the same direction
+  dat[,effects_same_direction := sign(x) == sign(y)]
+  
+  features_same_direction = dat[effects_same_direction==T,features]
+  intersectgenes_sign_samedir_proz = dat[,sum(effects_same_direction)/.N]
+  
+  sign_genes = dat[coloring == "x & y", features]
+  analyzed_genes = dat_pre[, features]
+  
+  # create plot - uses default theme 
+  # use theme_set(theme_light(base_size = 12, base_family = "Helvetica")) or similar
+  
+  if(showNonsignific_points==F) {
+    dat4plot = dat[coloring != "none", ]
+    dat4plot[, coloring:= factor(coloring, levels = c("x", "y", "x & y"))]
+    
+  }
+  
+  r2signed  = mod$r.squared * sign(coefficients(mod)["x", "Estimate"])
+  r2signedplot =  bquote(signed~R^2* '='~.(signif(r2signed,r_digits)))
+  # dat4plot[,coloring := factor(coloring, exclude = "none")]
+  
+  if(plot_subtitle=="") plot_subtitle = paste0('Significant genes -> ',dat[,.N,coloring][,paste0(coloring, ":", N)]  %>% paste(collapse = " | "), 
+                                               ";  Of those having same direction:", proz(intersectgenes_sign_samedir_proz))
+  p <- ggplot(dat4plot, aes(x = x,
+                            y = y,
+                            col = coloring)) + 
+    geom_point(alpha = 0.4, size = pointsize) + 
+    geom_hline(yintercept = 0, col  = "grey55") + 
+    geom_vline(xintercept = 0, col  = "grey55") + 
+    geom_abline(intercept = 0, slope = 1, lty = 1, col = "grey55", alpha = 0.5) + 
+    annotate("text", 
+             x = -Inf, 
+             y = Inf,
+             hjust = -0.3,
+             vjust = 2,
+             label = deparse(r2signedplot),
+             size = 6, 
+             parse = T) +
+    scale_color_discrete(drop=FALSE)+
+    guides(col = guide_legend(title = bquote("FDR" ~ ""<="" ~ .(fdrControl) ~ "in:"))) + ggtitle(plot_title, subtitle = plot_subtitle)
+  
+  p
+  if(is.null(label)==F) p = p+ ggrepel::geom_text_repel(aes(label = label), segment.alpha = segment_alpha, alpha = text_alpha) # TODO disentangle label and intersectgenes as label does not work with making intersectgenes
+  if(identical(showfits , "all")) p = p + geom_smooth( method = "lm", aes(group = 1), col = "gray55", alpha = 0.5, formula=y~x-1)
+  if(identical(showfits,  "individual")) p = p + geom_smooth( method = "lm", alpha = 0.5,formula=y~x-1) 
+  
+  if(showPlot == TRUE){
+    print(p)
+  }
+  
+  
+  return(list(
+    plot = p, # returns plot for easier modification with labels etc
+    data = dat_pre, # returns dat used for producing the plot
+    model = mod, # for getting the exact R2 or something else produced by the model
+    r2signed = r2signed,
+    intersectgenes =intersectgenes,
+    features_same_direction =features_same_direction,
+    intersectgenes_sign_samedir_proz =intersectgenes_sign_samedir_proz,
+    
+    sign_genes = dat[coloring == "x & y", features],
+    analyzed_genes = dat_pre[, features],
+    
+    n_signif_genes = dat[coloring == "x & y", features] %>% length(),
+    n_analyzed_genes = dat_pre[, features] %>% length(),
+    
+    
+    dat_in_model = dat[coloring != "none"]
+  ))
+}
+
+todo[,rownum := .I]
+
+pdf(here("R/results/h265_8_FDR20_betaplots_diffex_noMitoRibo_batchpreadj.pdf"), 7,7)
+allr2 = lapply(todo$rownum, function(myrownum) {
+  # myrownum = todo$rownum[1]
+  # myrownum =136
+  myrow  = todo[rownum == myrownum]
+  print(myrow)
+  stopifnot(nrow(myrow)==1)
+  
+  mybetares = beta_plot(  x= diffex2[id == myrow$id_human, logFC],
+                          y=diffex2[id == myrow$id_hamster, logFC],
+                          xQval =diffex2[id == myrow$id_human, p_BH],
+                          yQval = diffex2[id == myrow$id_hamster, p_BH],
+                          fdrControl =0.2,
+                          x_genes4intersectmake = diffex2[id == myrow$id_human, symbol],
+                          y_genes4intersectmake = diffex2[id == myrow$id_hamster, symbol],
+                          showfits = "all", plot_title = myrow[, paste(myrownum, "-", celltype, id_human, "human", human_contrast1,"vs.",id_hamster, "hamster", hamster, hamster_contrast1)])
+  
+  myrow$r2signed = mybetares$r2signed
+  myrow$intersectgenes_sign_samedir_proz = mybetares$intersectgenes_sign_samedir_proz
+  myrow$n_intersectgenes = length(mybetares$intersectgenes)
+
+  
+  
+  myrow$n_signif_genes = mybetares$n_signif_genes
+  myrow$n_analyzed_genes = mybetares$n_analyzed_genes
+  
+  myrow$proz_signif_genes = mybetares$n_signif_genes/ mybetares$n_analyzed_genes
+  
+  myrow$n_genesFDR = nrow(mybetares$dat_in_model)
+  resi = list(mybetares, myrow)
+  names(resi) = c("betares", "todorow")
+  resi
+})
+dev.off()
+
+names(allr2) =todo$rownum
+
+
+r2table = lapply(names(allr2), function(myname) {
+  allr2[[myname]]$todorow
+}) %>% rbindlist(fill = T)
+
+allr2[[14]]$todorow
+allr2[[1]]$todorow
+
+r2table[,zeile := .I]
+r2table[is.na(intersectgenes_sign_samedir_proz)==F,  p_binom := binom.test(x = intersectgenes_sign_samedir_proz*n_signif_genes ,
+                                                                           n = n_signif_genes, p = 0.5)$p.value, zeile]
+
+```
+
+## new plot
+```{r}
+
+p1=ggplot(r2table, aes(hamster_contrast1, human_contrast1,  col = -intersectgenes_sign_samedir_proz , size = proz_signif_genes , alpha = p_binom<=0.05)) + geom_point() + facet_grid(celltype~hamster, space = "free", scales = "free") + 
+
+  scale_color_gradient2_tableau(guide = "legend") + 
+  theme_minimal(base_size = 14) + scale_size_continuous(range = c(2,8), breaks = c(0,0.01, 0.05, 0.1, 0.2 ,0.4))
+
+p1
+
+r2table
+
+dput(unique(r2table$celltype))
+r2table[, celltype2 := factor(celltype, levels = c("Classical_Monocytes","Non_Classical_Monocytes","CD4+_T_Cells", "CD8+_T_Cells","Immature Neutrophils 1","Immature Neutrophils 2",   "Neutrophils",  "NK_Cells", "B_Cells", "DC") )]
+
+dput(unique(r2table$hamster_contrast1))
+r2table[, hamster_contrast1v2 := factor(hamster_contrast1, levels = c("e14", "d5","d3", "d2",   "ld_D3","ld_D2", "hd_D3", "hd_D2"))]
+
+
+setorder(r2table, celltype2)
+r2table[, celltype3 := celltype2 %>% str_replace_all("_", " ") %>% str_wrap(width = 13)]
+r2table[, celltype3 := factor(celltype3, levels = unique(celltype3))]
+
+p2=ggplot(r2table[human_contrast1 != "4u5"], aes( human_contrast1, hamster_contrast1v2, col = -intersectgenes_sign_samedir_proz , size = n_signif_genes , alpha = p_binom<=0.05)) + geom_point() + 
+  facet_grid(hamster~celltype3, space = "free", scales = "free") + 
+
+  scale_size_continuous(range = c(2,9), breaks = c(5, 50, 100,250, 400, 1000))+
+  theme_minimal(base_size = 14) + 
+  labs(size = "Number overlapping significant\ngenes (FDR20%)",
+       color = "Percent human effect direction\n same in hamster",
+       alpha = "Significant difference from 50% of\n same effect direction in hamster") +
+  theme(legend.position = "top",legend.direction = "vertical") +
+  scale_color_gradient2_tableau(guide = "legend", breaks = (c(0:5, 2.5)/-5)%>% sort(), labels = (c(0:5, 2.5)/5)%>% sort() %>% rev() *100,limits = c(-1,0)) +
+  guides(col = guide_legend(nrow = 1,override.aes = list(size=5)),
+         size = guide_legend(ncol = 2), 
+         alpha = guide_legend(override.aes = list(size=5))) +
+  ylab("Hamster") +xlab("Human")
+
+
+p_combi = (p2 %+% r2table[celltype %in% c("Classical_Monocytes","Non_Classical_Monocytes","CD4+_T_Cells", "CD8+_T_Cells") & human_contrast1 != "4u5"] )/
+  (p2 %+% r2table[celltype %nin% c("Classical_Monocytes","Non_Classical_Monocytes","CD4+_T_Cells", "CD8+_T_Cells")& human_contrast1 != "4u5"] + guides(col = "none", alpha  = "none", size  = "none")) + plot_layout(guides = "collect")+ plot_annotation(caption = "h265_8_FDR20_dotplot_effectsizes.jpeg")  &   theme(legend.position = "right",legend.direction = "vertical")
+
+p_combi
+```
+
+
+## speichern 
+```{r}
+jpeg2(here("R/results/_FDR20_dotplot_effectsizes.jpeg"), 10,6.5)
+p_combi
+dev.off()
+
+pdf(here("R/results/h265_8_FDR20_dotplot_effectsizes.pdf"), 10,6.5)
+p_combi
+dev.off()
+
+
+fwrite(r2table, here("R/results/h265_8_plotdata_FDR20_dotplot_effectsizes.txt.gz"), sep = "\t")
+
+
+genetable = lapply(names(allr2), function(myname) {
+  cbind(allr2[[myname]]$todorow, allr2[[myname]]$betares$data )
+}) %>% rbindlist(fill = T)
+fwrite(genetable, here("R/results/h265_8_FDR20_effect_size_comparison_HAMSTER-HUMAN_genes_noMitoRibo_batchpreadj.txt"), sep = "\t")
+writexl::write_xlsx(list(genetable=genetable), here("R/results/h265_8_FDR20_effect_size_comparison_HAMSTER-HUMAN_genes.xlsx"))
+```
+
+### Top gene pointing in the same direction
+Get full gene names
+```{r}
+library("biomaRt")
+listMarts()
+mart = useMart('ENSEMBL_MART_ENSEMBL')
+listDatasets(mart)
+
+ensembl = useMart("ENSEMBL_MART_ENSEMBL",dataset="hsapiens_gene_ensembl")
+listFilters(ensembl)
+listAttributes(ensembl)
+anno = getBM(attributes=c('hgnc_symbol','description'), 
+             filters = 'hgnc_symbol', 
+             values = genetable$features %>% unique(), 
+             mart = ensembl)
+
+head(anno)
+
+anno2 = data.table(anno)
+anno2[, description2:= str_split(description, " \\[Source") %>% sapply("[", 1)]
+
+anno2
+genetable[,description := anno2[match_hk(genetable$features, anno2$hgnc_symbol), description2]]
+```
+
+
+```{r}
+genetable[,row_ID := paste(longid_hamster, longid_human)]
+genetable[allDuplicatedEntries(row_ID)]
+r2table[,row_ID := paste(longid_hamster, longid_human)]
+stopifnot(r2table[allDuplicatedEntries(row_ID)]  %>% nrow() ==0) 
+
+genetable[, difference_from_50perc_pval := r2table[match_hk(genetable$row_ID, r2table$row_ID), p_binom]]
+
+genetable_consensus = genetable[ coloring =="x & y" & 
+                                  (effects_same_direction ==T | (effects_same_direction ==F & hamster_contrast1 == "e14"))# & 
+                                  #(intersectgenes_sign_samedir_proz >0.5 | (intersectgenes_sign_samedir_proz <0.5& hamster_contrast1 == "e14"))
+                                 ]
+```
+
+
+```{r}
+genetable_consensus[, abs_FC_human := abs(x)]
+setorder(genetable_consensus, celltype, -abs_FC_human) 
+
+topgen_helper = genetable_consensus[duplicated(paste(celltype, features))==F, .(celltype, features, human_contrast1, hamster, hamster_contrast1, abs_FC_human, x, y, x.q, y.q )]
+topgen_helper[, topgen_samedir_nr := 1:.N, celltype]
+topgen_helper[, matchid := paste(features, celltype)]
+genetable_consensus[, matchid := paste(features, celltype)]
+genetable_consensus[, topgen_samedir_nr := topgen_helper[match_hk(genetable_consensus$matchid, topgen_helper$matchid),topgen_samedir_nr]]
+dput(names(genetable_consensus))
+
+topgen_helper_no4u5 = genetable_consensus[human_contrast1 !="4u5"][duplicated(paste(celltype, features))==F, .(celltype, features, human_contrast1, hamster, hamster_contrast1, abs_FC_human, x, y, x.q, y.q )]
+topgen_helper_no4u5[, topgen_samedir_nr_no4u5 := 1:.N, celltype]
+topgen_helper_no4u5[, matchid_no4u5 := paste(features, celltype)]
+genetable_consensus[, matchid_no4u5 := paste(features, celltype)]
+genetable_consensus[, topgen_samedir_nr_no4u5 := topgen_helper_no4u5[match_hk(genetable_consensus$matchid_no4u5, topgen_helper_no4u5$matchid_no4u5),topgen_samedir_nr_no4u5]]
+dput(names(genetable_consensus))
+
+
+
+mycols =  c("celltype", "human_contrast1", "hamster", "hamster_contrast1",  "n_intersectgenes", "n_analyzed_genes", "n_signif_genes","n_genesFDR",  "proz_signif_genes", "intersectgenes_sign_samedir_proz",
+                                                          "topgen_samedir_nr",
+                                                          "features", "description", "x", "y", "x.q", "y.q", "effects_same_direction", "difference_from_50perc_pval", 
+                                                          "coloring", "row_ID", "abs_FC_human")
+venn2(names(genetable_consensus), mycols)
+genetable_consensus = moveColFront(genetable_consensus,mycols)
+
+setnames(genetable_consensus, c("x", "y", "x.q", "y.q"), c("FoldChange_human", "FoldChange_hamster", "FDR_human", "FDR_hamster"))
+genetable_consensus$n_signif_genes = NULL
+genetable_consensus$n_analyzed_genes = NULL
+writexl::write_xlsx(list(genes_sign_same_dir = genetable_consensus),
+                    here("R/results/h265_8_FDR20_genes_same_direction_filtered_for_comparisons_with_significant_effect_size_replication.xlsx"))
+```
+add gene description also to the old GE list
+
+
+```{r}
+genetable_consensus[, direction := ifelse(FoldChange_human >0, "up", "down")]
+
+genetable_consensusm = melt(genetable_consensus, id.vars = c("celltype",'features',"topgen_samedir_nr","topgen_samedir_nr_no4u5", "human_contrast1", "hamster_contrast1"), measure.vars = c("FoldChange_human", "FoldChange_hamster"), variable.name = "Species", value.name = 'Foldchange')
+genetable_consensusm[, abslogFC := abs(Foldchange)]
+genetable_consensusm[, direction := ifelse(Foldchange >0, "up", "down")]
+genetable_consensusm[, Species := str_replace(Species, "FoldChange_", "")]
+
+genetable_consensusm[, hamster_contrast1 := factor(hamster_contrast1)]
+genetable_consensusm[, direction := factor(direction)]
+
+genetable_consensusm2 = genetable_consensusm[topgen_samedir_nr <=20]
+```
+
+## more plotting
+
+
+```{r}
+genetable_consensusm2[,uniqueN(features), celltype]
+genetable_consensusm2[,unique(celltype)]
+
+plotdat_tmp = genetable_consensusm2[celltype == unique(celltype)[4]]
+p_similgenes = ggplot(plotdat_tmp, aes(hamster_contrast1 , human_contrast1 ,  col = Species, pch = direction , size= abslogFC)) +
+  geom_point( alpha = 0.6) +
+  facet_grid(features~., scales= "free",switch  = "x") + theme_minimal(base_size = 18) +
+  labs(size = "abs. FoldChange",
+       color = "Species") +
+  theme(strip.text.y.left =  element_text(angle = 0, hjust = 0),
+        strip.text.y.right =   element_text(angle = 0, hjust = 0),
+        legend.position = "top",
+        legend.text.align = 0,
+        legend.box = "horizontal") +
+  scale_shape_manual(values = c(6,2))+
+  scale_size_continuous(range =  c(1.5,11)) +
+  scale_color_manual(values = c("#FB3640", "#0D3B66"))+
+  scale_fill_manual(values = c("#FB3640", "#0D3B66")) +
+  guides(color = guide_legend(override.aes = list(size=5), ncol = 1),
+         pch = guide_legend(override.aes = list(size=5), ncol = 2),
+         size = guide_legend(ncol = 1, override.aes = list(pch = 2))
+  ) + ggtitle(unique(plotdat_tmp$celltype))
+p_similgenes
+```
+
+
+```{r}
+
+allcelltypes = unique(genetable_consensusm2$celltype)
+range(genetable_consensusm2$Foldchange)
+
+range(genetable_consensusm2$abslogFC)
+
+
+```
+
+```{r}
+p_similgeneslist = lapply(allcelltypes, function(mycelltype) {
+  # mycelltype = allcelltypes[4]
+  myplotdat = genetable_consensusm2[celltype ==mycelltype ]
+  str(myplotdat$direction)
+  myplot = ggplot(myplotdat, aes(hamster_contrast1 , human_contrast1 ,  col = Species, pch = direction , size= abslogFC)) +
+    geom_point( alpha = 0.6) +
+    facet_grid(features~., scales= "free_y",switch  = "x") + theme_minimal(base_size = 18) +
+    labs(size = "abs. LogFoldChange",
+         color = "Species") +
+    theme(strip.text.y.left =  element_text(angle = 0, hjust = 0),
+          strip.text.y.right =   element_text(angle = 0, hjust = 0),
+          legend.position = "top",
+          legend.text.align = 0,
+          legend.box = "horizontal") +
+    scale_shape_manual(values = c(6,2),drop=FALSE)+
+    scale_size_continuous(range =  c(1.5,11), limits = c(0.5,11)) +
+    scale_color_manual(values = c("#FB3640", "#0D3B66"))+
+    scale_fill_manual(values = c("#FB3640", "#0D3B66")) +
+    guides(color = guide_legend(override.aes = list(size=5), ncol = 1),
+           pch = guide_legend(override.aes = list(size=5), ncol = 2),
+           size = guide_legend(ncol = 1, override.aes = list(pch = 2))
+    ) +
+    scale_x_discrete(drop=FALSE) +
+    ggtitle(mycelltype)
+  myplot
+}
+)
+geneplottop5 = patchwork::wrap_plots(p_similgeneslist) + plot_layout(guides = "collect")
+geneplottop5
+```
+
+
+```{r}
+jpeg2 = function(...) {jpeg(..., units = "in", quality = 100, res = 300)}
+jpeg2(here("R/results/h265_8_top5_genes_same_direction.jpeg"), 28,28)
+geneplottop5 + plot_annotation(caption = "h265_8_top5_genes_same_direction.jpeg")
+dev.off()
+
+pdf(here("R/results/h265_8_top5_genes_same_direction.pdf"), 28,28)
+geneplottop5 + plot_annotation(caption = "h265_8_top5_genes_same_direction.pdf")
+dev.off()
+```
+
+## again only with 3 and 7 tp
+
+```{r}
+p_similgeneslist_no4u5 = lapply(allcelltypes, function(mycelltype) {
+  # mycelltype = allcelltypes[2]
+  myplotdat = genetable_consensusm2[celltype ==mycelltype & human_contrast1 != "4u5"  & topgen_samedir_nr_no4u5  <=10]
+  
+  if(nrow(myplotdat)==0) {message("No overlapping genes found for ",mycelltype );return(NULL)}
+   myplot = ggplot(myplotdat, aes(hamster_contrast1 , human_contrast1 ,  col = Species, pch = direction , size= abslogFC)) +
+    geom_point( alpha = 0.6) +
+    facet_grid(features~., scales= "free_y",switch  = "x") + theme_minimal(base_size = 18) +
+    labs(size = "abs. LogFoldChange",
+         color = "Species") +
+    theme(strip.text.y.left =  element_text(angle = 0, hjust = 0),
+          strip.text.y.right =   element_text(angle = 0, hjust = 0),
+          legend.position = "top",
+          legend.text.align = 0,
+          legend.box = "horizontal") +
+    scale_shape_manual(values = c(6,2),drop=FALSE)+
+    scale_size_continuous(range =  c(1.5,11), limits = c(0.5,11)) +
+    scale_color_manual(values = c("#FB3640", "#0D3B66"))+
+    scale_fill_manual(values = c("#FB3640", "#0D3B66")) +
+    guides(color = guide_legend(override.aes = list(size=5), ncol = 1),
+           pch = guide_legend(override.aes = list(size=5), ncol = 2),
+           size = guide_legend(ncol = 1, override.aes = list(pch = 2))
+    ) +
+    scale_x_discrete(drop=FALSE) +
+    ggtitle(mycelltype)
+  myplot
+}
+)
+p_similgeneslist_no4u5v2 = p_similgeneslist_no4u5[sapply(p_similgeneslist_no4u5, is.null)==F]
+geneplottop5_no4u5 = patchwork::wrap_plots(p_similgeneslist_no4u5v2) + plot_layout(guides = "collect",ncol = 3)
+geneplottop5_no4u5
+```
+
+
+```{r}
+
+jpeg2(here("R/results/h265_8_top5_genes_same_direction_no4u5.jpeg"), 25,15)
+geneplottop5_no4u5 + plot_annotation(caption = "h265_8_top5_genes_same_direction_no4u5.jpeg")
+dev.off()
+
+pdf(here("R/results/h265_8_top5_genes_same_direction_no4u5.pdf"), 20,28)
+geneplottop5_no4u5 + plot_annotation(caption = "h265_8_top5_genes_same_direction_no4u5")
+dev.off()
+
+fwrite(genetable_consensusm2, here("R/results/h265_8_plotdata_top5_genes_same_direction_no4u5.txt.gz"))
+
+
+```
+
+## Important in human but not hamstr
+```{r}
+genetable[, abs_FC_human := abs(x)]
+genetable[ , onlyHuman := coloring =="x" & all(x.q<=0.05) & all(y.q>0.5), .(features, celltype)]# & 
+         genetable_consensus_onlyhum = genetable[onlyHuman==T][order(-abs_FC_human)]
+paste(unique(genetable_consensus_onlyhum$features), collapse = "\n") %>% cat() #  ok, nicht so superkrass wichtig
+```
+
+
+### R objekt
+```{r}
+saveRDS(allr2, here("R/results/h265_8_FDR20_betaplots_diffex_noMitoRibo_batchpreadj.RDS"))
+```
+
+
+
+
+## finalize
+
+```{r}
+finalizeSkript()
+
+
+```

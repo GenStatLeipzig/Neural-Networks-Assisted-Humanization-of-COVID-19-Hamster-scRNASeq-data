@@ -1,0 +1,499 @@
+---
+title: "h245_7_pathwayoverlap"
+format:
+  html:
+    df-print: kable
+    fig-width: 10
+    fig-height: 7
+    code-fold: true
+    code-summary: "Show the code"
+    toc: true
+    toc-location: left
+    toc-depth: 3
+    number-sections: false
+    standalone: true
+    embed-resources: true
+editor: source
+execute:
+  cache: false
+editor_options:
+  chunk_output_type: console
+---
+
+# INITITATE
+
+```{r}
+
+#' # INITIIEREN ####  
+.libPaths() 
+
+library(toolboxH)
+library(Seurat)
+library(SeuratDisk)
+
+library(here)
+library(ggplot2)
+library(scales)
+library(ggthemes)
+# BiocManager::install("scRNAseq")
+library(SingleR)
+library(BiocParallel)
+library(patchwork)
+library(harmony)
+require(gprofiler2)
+
+# BiocManager::install("SingleR")
+
+library(future) #https://satijalab.org/celllines/archive/v3.0/future_vignette.html
+options(future.globals.maxSize= 30*1024^3) # to prevent the error
+future.seed=TRUE # to care for proper random seeds
+# The total size of the 15 globals exported for future expression ('FUN()') is 12.32 GiB.. This exceeds the maximum allowed size of 500.00 MiB (option 'future.globals.maxSize'). The three largest globals are 'object' (12.26 GiB of class 'numeric'), 'split.cells' (54.18 MiB of class 'list') and 'rowVars' (226.99 KiB of class 'function')
+ncores = 1
+plan("multicore", workers = ncores)
+initializeSkript()
+  
+```
+
+# AIM
+
+plot all pairwise n human AND hamster  found pathways from DE
+# LOAD
+
+```{r}
+pwtable = fread(here("R/results/h240_3_pw_enrichment.txt.gz"))
+
+getable = fread(here("R/results/h240_3_DE_.txt.gz"))
+setnames(getable, c("P.Value_BH_Contrast", 
+"P.Value_BH_Celltype", "P.Value_BH_Species"), c("P.Value_BH_Contrast", 
+"P.Value_BH_Contrast_Celltype", "P.Value_BH_Contrast_Celltype_Species"))
+```
+
+# DE genes
+ 
+```{r}
+ 
+jpeg2 = function(...) {jpeg(..., units = "in", quality = 100, res = 600)}
+ 
+```
+ 
+
+
+Add eta1 to compare changes in tissues
+```{r}
+
+eta1_tab = getable[ ,.(eta1= 1- fdrtool::fdrtool(x = P.Value, statistic = "pvalue", 
+    plot = F)$param[,"eta0"]), .(species, celltype, contrast1)]
+
+unique(eta1_tab$contrast1)
+
+eta1_tab[, contrast1v2 := factor(contrast1, 
+                                 levels = c("3", "4u5", "7", "d2", "d3", "d5", "e14","ld_D2", "ld_D3", "hd_D2", "hd_D3"), 
+                                 labels = c("WHO3", "WHO4&5", "WHO7", "2 dpi", "3 dpi", "5 dpi", "14 dpi","2 dpi ld", "3 dpi ld", "2 dpi hd", "3 dpi hd"))]
+
+dput(unique(eta1_tab$celltype))
+
+eta1_tab$celltype %>% unique()
+eta1_tab[, celltype_complete  := celltype %in% c( "Immature neutrophil","B_Cells", "CD8+_T_Cells", "Non_Classical_Monocytes", "Classical_Monocytes", "CD4+_T_Cells", "NK_Cells", "Neutrophils")]
+
+setorder(eta1_tab, celltype_complete, -eta1  )
+
+eta1_tab[, celltype := factor(celltype, levels = unique(celltype))]
+
+eta1_tab[, celltype2 := factor(celltype, levels =  c("Classical_Monocytes", "Non_Classical_Monocytes","DC", "Immature Neutrophils 1", "Immature Neutrophils 2", "Neutrophils", "NK_Cells", "CD4+_T_Cells", "CD8+_T_Cells", "B_Cells", "Plasmablasts", "Platelet", "Megakaryocyte",  "Proliferating_Cells"))]
+
+stopifnot(sum(is.na(eta1_tab$celltype2))==0)
+
+## fill missing values
+allcombis = expand.grid(celltype2 = unique(eta1_tab$celltype2),
+                        contrast1 = unique(eta1_tab$contrast1),
+                        species = unique(eta1_tab$species), stringsAsFactors = F
+) %>% as.data.table()
+
+allcombis2 = allcombis[ paste(species, contrast1) %in% eta1_tab[,paste(species, contrast1)]]
+allcombis2[celltype2=="DC"] %>% data.frame()
+allcombis2[,id := paste(celltype2, contrast1, species,sep = "__")]
+eta1_tab[,id := paste(celltype2, contrast1, species,sep = "__")]
+
+eta1_tab2 = merge(eta1_tab[,.(species, celltype, celltype2, contrast1, id, eta1)], allcombis2[,.(id)], by = "id", all = T)        
+eta1_tab2[, species :=str_split(id, "__") %>% sapply(., "[", 3)]
+eta1_tab2[, celltype2 :=str_split(id, "__") %>% sapply(., "[", 1)]
+eta1_tab2[, celltype :=str_split(id, "__") %>% sapply(., "[", 1)]
+eta1_tab2[, contrast1 :=str_split(id, "__") %>% sapply(., "[", 2)]
+eta1_tab2[celltype2=="DC"]
+
+eta1_tab2[, label := ifelse(is.na(eta1), "",
+                            ifelse(eta1<0.005, proz(eta1,1) ,proz(eta1,0) ))]
+
+eta1_tab2[, contrast1v2 := factor(contrast1, 
+                                 levels = c("3", "4u5", "7", "d2", "d3", "d5", "e14","ld_D2", "ld_D3", "hd_D2", "hd_D3"), 
+                                 labels = c("WHO3", "WHO4&5", "WHO7", "2 dpi", "3 dpi", "5 dpi", "14 dpi","2 dpi ld", "3 dpi ld", "2 dpi hd", "3 dpi hd"))]
+
+
+
+p_eta1 = ggplot(eta1_tab2, aes(contrast1v2,  reorder(celltype2, - eta1),label = label, fill =eta1)) + geom_tile() + 
+  theme_minimal(base_size = 14) +
+  facet_grid(.~species, scales = 'free', space = "free") + geom_text() + scale_fill_gradient_tableau(palette = "Red-Gold") + ylab("") + xlab("") + guides(fill = "none") + ggtitle("Percent transcriptome changed compared with control")
+
+p_eta1
+
+
+eta1_tab2[, celltype2 := factor(celltype, levels =  c("Classical_Monocytes", "Non_Classical_Monocytes", "Immature Neutrophils 1",  "Neutrophils", "NK_Cells", "CD4+_T_Cells", "CD8+_T_Cells", "B_Cells","DC", "Platelet",  "Plasmablasts","Megakaryocyte", "Immature Neutrophils 2", "Proliferating_Cells") %>% rev())]
+
+
+p_eta1v2 = ggplot(eta1_tab2, aes(contrast1v2, celltype2,label = label, fill =eta1)) + geom_tile() + 
+  theme_minimal(base_size = 14) +
+  facet_grid(.~species, scales = 'free', space = "free") + geom_text() + scale_fill_gradient_tableau(palette = "Red-Gold") + ylab("") + xlab("") + guides(fill = "none") + ggtitle("Percent transcriptome changed compared with control")
+
+p_eta1v2
+
+names(getable) %>% dput()
+
+
+```
+
+## save figure
+```{r}
+
+jpeg2(here("R/results/h245_7_eta1_vs_species_vs_severity.jpeg"),12, 6)
+p_eta1v2 + plot_annotation(caption = "h245_7_eta1_vs_species_vs_severity.jpeg")
+dev.off()
+
+pdf(here("R/results/h245_7_eta1_vs_species_vs_severity.pdf"),12, 6)
+p_eta1v2 + plot_annotation(caption = "h245_7_eta1_vs_species_vs_severity.jpeg")
+dev.off()
+
+write.delim(eta1_tab2, here("R/results/h245_7_eta1_tab.txt") )
+
+
+```
+
+
+save ge table
+```{r}
+getable2 = getable[,c("id", "species", "celltype", "contrast1", "contrast0", "symbol", 
+"logFC", "AveExpr", "t", "P.Value", "adj.P.Val", "B" ), with = F]
+
+writexl::write_xlsx(list(DElist = getable2,
+                         eta1 = eta1_tab2),here("R/results/h245_7_de_list.xlsx"))
+```
+
+# filter duplicated pw between hamster an human
+```{r}
+pwtable[, species_grob := str_split(species, "_") %>% sapply(.,"[",1)]
+pwtable[, .N,species_grob]
+
+pwtable2 = pwtable[p_value.adjusted<=0.05 & intersection_size>1 & source %in% c('GO:BP', "WP", "REAC", "KEGG") ]
+pwtable2[, in_hamster_and_human := uniqueN(species_grob), .(celltype, term_name)]
+pwtable2[, .N,in_hamster_and_human]
+
+```
+
+
+
+# grafical
+```{r}
+pwtable2[,.N, source]
+
+pwtable2[, maxTermsize := max(term_size), .(celltype, term_name)]
+pwtable2[, minTermsize := min(term_size), .(celltype, term_name)]
+
+pwtable2b = pwtable2[(in_hamster_and_human>1 &  maxTermsize<=220) ][order(-enrichment,  -top_lessredunt)] ## die beiden waren am hoechsten in cd4 enriched
+pwtable2b
+
+```
+
+
+## manual edits to remove redundant pathways
+```{r}
+pwtable2c = copy(pwtable2b)
+```
+
+### defense response to symbiont
+
+```{r}
+# ist the same as defense response to virus
+qlist122 = venn2(pwtable2c[term_name =="defense response to symbiont", paste(species, celltype, contrast1,intersection)],
+                 pwtable2c[term_name =="defense response to virus", paste(species, celltype, contrast1,intersection)]
+                 )
+
+pwtable2c = pwtable2c[term_name !="defense response to symbiont"]
+```
+
+
+### Interferon alpha/beta signaling more specific than Interferon Signaling
+in Classical mono
+
+
+```{r}
+qlist123 = venn2(pwtable2c[term_name =="Interferon Signaling", paste(species, celltype, contrast1)],
+                 pwtable2c[term_name =="Interferon alpha/beta signaling", paste(species, celltype, contrast1)]
+)
+str(qlist123)
+
+pwtable2c = pwtable2c[(term_name =="Interferon Signaling" & celltype == 'Classical_Monocytes')==F]
+```
+
+### Negative regulation of viral genome replication quite specific than related
+```{r}
+pwtable2c = pwtable2c[(term_name %in% c("negative regulation of viral process", "regulation of viral genome replication",  "regulation of viral process",   "regulation of viral life cycle", "viral life cycle", "viral genome replication") & celltype == 'Classical_Monocytes')==F]
+
+
+pwtable2c = pwtable2c[(term_name %in% c("negative regulation of viral process", "regulation of viral genome replication", "viral life cycle", "viral genome replication", "regulation of viral process") & celltype == 'Neutrophils')==F] # not  "regulation of viral life cycle" as some contrast have this only, not the also kept"negative regulation of viral genome replication"
+
+```
+
+
+```{r}
+pwtable2c[allDuplicatedEntries(paste(species, celltype, contrast1,intersection))]
+pwtableFig3 = pwtable2c
+
+pwtableFig3[,.N, , .(term_name,celltype, species)][order(-N)]
+
+
+pwtableFig4 = dcast.data.table(pwtableFig3, celltype + term_name  ~ contrast1  , value.var = "term_name", fun.aggregate = function(x) paste(unique(x), collapse = "___"))
+pwtableFig4m  = melt(pwtableFig4, id.vars = c("celltype","term_name","3", "4u5", "7"), measure.vars =c("d2", "d3", "d5", "hd_D2", "hd_D3", "ld_D2", 
+                                                                                                 "ld_D3"), variable.name = "hamster", value.name = 'term_name_hamster')
+
+pwtableFig4mm= melt(pwtableFig4m, id.vars = c("celltype","term_name","hamster", "term_name_hamster"), measure.vars =c("3", "4u5", "7"), variable.name = "human", value.name = 'term_name_human')
+
+pwtableFig4mm2 = pwtableFig4mm[(term_name_hamster==term_name_human) & term_name_hamster !=""]
+pwtableFig4mm2
+pwtableFig4mm2[, id_hamster:= paste(celltype, hamster, term_name)]
+pwtableFig4mm2[, id_human:= paste(celltype, human, term_name)]
+pwtable2[, id_both := paste(celltype, contrast1, term_name)]
+
+pwtableFig4mm2[, enrichment_hamster := pwtable2[match_hk(pwtableFig4mm2$id_hamster, pwtable2$id_both, makeunique = T, importcol = pwtable2$enrichment), round(enrichment, 1)]]
+
+pwtableFig4mm2[, enrichment_human := pwtable2[match_hk(pwtableFig4mm2$id_human, pwtable2$id_both, makeunique = T, importcol = pwtable2$enrichment), round(enrichment, 1)]]
+
+pwtableFig4mm2[, intersection := pwtable2[match_hk(pwtableFig4mm2$id_hamster, pwtable2$id_both, makeunique = T, importcol = pwtable2$intersection), intersection]]
+```
+
+### remove same gene pathways
+```{r}
+pwtableFig4mm2 = pwtableFig4mm2[order(-enrichment_human)]
+pwtableFig4mm2[allDuplicatedEntries(paste(celltype, human, hamster, intersection))]
+
+```
+
+
+```{r}
+pwtableFig4mm2[, term_name2:= paste0(term_name, " (hs:", enrichment_human, "/ha:", enrichment_hamster, ")")]
+
+
+
+pwtableFig4mm2[,hamster:= factor(hamster, levels =c("d2", "d3", "d5",  "ld_D2", "ld_D3","hd_D2", "hd_D3"))]
+
+pwtableFig4mm2m  = melt(pwtableFig4mm2, id.vars = c("celltype", "term_name", "hamster", "human"), measure.vars = c("enrichment_hamster", "enrichment_human"))
+
+p_duplipathways = ggplot(pwtableFig4mm2m, aes(hamster, human,  col = variable, size= value)) + 
+  geom_point( alpha = 0.1) + 
+  geom_point( alpha = 1, pch = 1) + 
+  facet_grid(celltype +term_name~., scales= "free",switch  = "x") + theme_minimal(base_size = 18) +
+  labs(size = "Pathway enrichment factor",
+       color = "Species") +
+  theme(strip.text.y.left =  element_text(angle = 0, hjust = 0), 
+        strip.text.y.right =   element_text(angle = 0, hjust = 0),
+        legend.position = "top",
+        legend.text.align = 0,
+        legend.box = "vertical") +
+  guides(color = guide_legend(override.aes = list(size=5))) +
+  scale_size_continuous(range =  c(1.5,11)) + 
+  scale_color_manual(values = c("#FB3640", "#0D3B66"))+
+  scale_fill_manual(values = c("#FB3640", "#0D3B66"))
+
+p_duplipathways
+
+NogpaletteReihe <-  c("#CB769E", "#DE639A", "#A85C85", "#0081AF", "#4F6D7A", "#7C6A0A", "#368F8B", "#246A73", "#5CC1BC", "#62C370", "#F7C548", "#F97E44", "#FB3640", "#B7245C", "#0D3B66", "#3E2F5B", "#B2675E", "#644536")
+
+
+```
+
+## again without 4u5
+```{r}
+
+p_duplipathways_no4u5 = ggplot(pwtableFig4mm2m[human =="4u5"], aes(hamster, human,  col = variable, size= value)) + 
+  geom_point( alpha = 0.1) + 
+  geom_point( alpha = 1, pch = 1) + 
+  facet_grid(celltype +term_name~., scales= "free",switch  = "x") + theme_minimal(base_size = 18) +
+  labs(size = "Pathway enrichment factor",
+       color = "Species") +
+  theme(strip.text.y.left =  element_text(angle = 0, hjust = 0), 
+        strip.text.y.right =   element_text(angle = 0, hjust = 0),
+        legend.position = "top",
+        legend.text.align = 0,
+        legend.box = "vertical") +
+  guides(color = guide_legend(override.aes = list(size=5))) +
+  scale_size_continuous(range =  c(1.5,11)) + 
+  scale_color_manual(values = c("#FB3640", "#0D3B66"))+
+  scale_fill_manual(values = c("#FB3640", "#0D3B66"))
+
+p_duplipathways_no4u5
+
+NogpaletteReihe <-  c("#CB769E", "#DE639A", "#A85C85", "#0081AF", "#4F6D7A", "#7C6A0A", "#368F8B", "#246A73", "#5CC1BC", "#62C370", "#F7C548", "#F97E44", "#FB3640", "#B7245C", "#0D3B66", "#3E2F5B", "#B2675E", "#644536")
+
+
+```
+
+
+
+
+# save 
+```{r}
+fwrite(pwtableFig4mm2m, here("R/results/h245_7_inputdata_plot_h245_7_overlapping_pathways_no4u5_smaller.txt.gz"))
+```
+
+```{r}
+
+
+
+pwtableFig4mm2m[variable =="enrichment_hamster",plotid := paste("hamster",celltype, hamster, term_name, value)]
+pwtableFig4mm2m[variable =="enrichment_human",plotid := paste("human",celltype, human, term_name, value)]
+
+pwtableFig3[,plotid := paste(species %>% str_replace("PR|MA", ""), celltype, contrast1, term_name, enrichment %>% round(.,1))]
+
+qlist766  = venn2(pwtableFig4mm2m$plotid, pwtableFig3$plotid)
+pwtableFig4mm2m[, intersection := pwtableFig3[match_hk(pwtableFig4mm2m$plotid, pwtableFig3$plotid, makeunique = T, importcol = pwtableFig3$intersection),intersection]]
+pwtableFig4mm2m[, source := pwtableFig3[match_hk(pwtableFig4mm2m$plotid, pwtableFig3$plotid, makeunique = T, importcol = pwtableFig3$source),source]]
+pwtableFig4mm2m[, term_id  := pwtableFig3[match_hk(pwtableFig4mm2m$plotid, pwtableFig3$plotid, makeunique = T, importcol = pwtableFig3$term_id),term_id ]]
+pwtableFig4mm2m[,.N, source]
+
+pwtableFig4mm2m[, p_value.adjusted  := pwtableFig3[match_hk(pwtableFig4mm2m$plotid, pwtableFig3$plotid, makeunique = T, importcol = pwtableFig3$p_value.adjusted),p_value.adjusted ]]
+
+pwtableFig4mm2m[, term_size   := pwtableFig3[match_hk(pwtableFig4mm2m$plotid, pwtableFig3$plotid, makeunique = T, importcol =  pwtableFig3$term_size),term_size  ]]
+
+pwtableFig4mm2m[, query_size   := pwtableFig3[match_hk(pwtableFig4mm2m$plotid, pwtableFig3$plotid, makeunique = T, importcol = pwtableFig3$query_size ),query_size  ]]
+
+pwtableFig4mm2m[, intersection_size   := pwtableFig3[match_hk(pwtableFig4mm2m$plotid, pwtableFig3$plotid, makeunique = T, importcol = pwtableFig3$intersection_size ),intersection_size  ]]
+
+
+pwtableFig4mm2m[, precision      := pwtableFig3[match_hk(pwtableFig4mm2m$plotid, pwtableFig3$plotid, makeunique = T, importcol = pwtableFig3$precision    ),precision     ]]
+
+pwtableFig4mm2m[, recall       := pwtableFig3[match_hk(pwtableFig4mm2m$plotid, pwtableFig3$plotid, makeunique = T, importcol = pwtableFig3$recall     ),recall      ]]
+
+pwtableFig4mm2m[, expected_pct       := pwtableFig3[match_hk(pwtableFig4mm2m$plotid, pwtableFig3$plotid, makeunique = T, importcol = pwtableFig3$expected_pct     ),expected_pct      ]]
+
+pwtableFig4mm2m[, obsersved_pct       := pwtableFig3[match_hk(pwtableFig4mm2m$plotid, pwtableFig3$plotid, makeunique = T, importcol = pwtableFig3$obsersved_pct     ),obsersved_pct      ]]
+
+pwtableFig4mm2m[,.N, source]
+
+```
+
+#das gleiche nochmal, ohne redundanzfilter
+```{r}
+pwREDUNDANTtable2b =  pwtable2[in_hamster_and_human>1 ][order(-enrichment,  -top_lessredunt)]
+pwREDUNDANTtable2b
+
+## manual edits
+```
+```{r}
+pwREDUNDANTtable2c = copy(pwREDUNDANTtable2b)
+```
+
+
+
+```{r}
+pwREDUNDANTtableFig3 = pwREDUNDANTtable2c #[duplicated(paste(species, celltype, contrast1,intersection))==F]
+
+pwREDUNDANTtableFig3[,.N, , .(term_name,celltype, species)][order(-N)]
+
+
+pwREDUNDANTtableFig4 = dcast.data.table(pwREDUNDANTtableFig3, celltype + term_name  ~ contrast1  , value.var = "term_name", fun.aggregate = function(x) paste(unique(x), collapse = "___"))
+pwREDUNDANTtableFig4m  = melt(pwREDUNDANTtableFig4, id.vars = c("celltype","term_name","3", "4u5", "7"), measure.vars =c("d2", "d3", "d5", "hd_D2", "hd_D3", "ld_D2", 
+                                                                                                 "ld_D3"), variable.name = "hamster", value.name = 'term_name_hamster')
+
+pwREDUNDANTtableFig4mm= melt(pwREDUNDANTtableFig4m, id.vars = c("celltype","term_name","hamster", "term_name_hamster"), measure.vars =c("3", "4u5", "7"), variable.name = "human", value.name = 'term_name_human')
+
+pwREDUNDANTtableFig4mm2 = pwREDUNDANTtableFig4mm[(term_name_hamster==term_name_human) & term_name_hamster !=""]
+pwREDUNDANTtableFig4mm2
+pwREDUNDANTtableFig4mm2[, id_hamster:= paste(celltype, hamster, term_name)]
+pwREDUNDANTtableFig4mm2[, id_human:= paste(celltype, human, term_name)]
+
+pwREDUNDANTtableFig4mm2[, enrichment_hamster := pwtable2[match_hk(pwREDUNDANTtableFig4mm2$id_hamster, pwtable2$id_both, makeunique = T, importcol = pwtable2$id_both), round(enrichment, 1)]]
+
+pwREDUNDANTtableFig4mm2[, enrichment_human := pwtable2[match_hk(pwREDUNDANTtableFig4mm2$id_human, pwtable2$id_both, makeunique = T, importcol = pwtable2$id_both), round(enrichment, 1)]]
+
+pwREDUNDANTtableFig4mm2[, term_name2:= paste0(term_name, " (hs:", enrichment_human, "/ha:", enrichment_hamster, ")")]
+pwREDUNDANTtableFig5b = dcast.data.table(pwREDUNDANTtableFig4mm2, celltype + human ~ hamster,value.var = "term_name2",fun.aggregate = function(x) paste(unique(x), collapse = "\n"))
+pwREDUNDANTtableFig5b
+
+
+pwREDUNDANTtableFig4mm2[,hamster:= factor(hamster, levels =c("d2", "d3", "d5",  "ld_D2", "ld_D3","hd_D2", "hd_D3"))]
+
+pwREDUNDANTtableFig4mm2m  = melt(pwREDUNDANTtableFig4mm2, id.vars = c("celltype", "term_name", "hamster", "human"), measure.vars = c("enrichment_hamster", "enrichment_human"))
+
+p_duplipathwaysREDUNDANT = ggplot(pwREDUNDANTtableFig4mm2m, aes(hamster, human,  col = variable, size= value)) + geom_point( alpha = 0.6, pch = 1) + facet_grid(celltype +term_name~., scales= "free",switch  = "x") + theme_minimal(base_size = 18) +
+  labs(size = "Pathway enrichment factor",
+       color = "Species") +
+  theme(strip.text.y.left =  element_text(angle = 0, hjust = 0), 
+        strip.text.y.right =   element_text(angle = 0, hjust = 0),
+        legend.position = "top",
+        legend.text.align = 0,
+        legend.box = "vertical") +
+  guides(color = guide_legend(override.aes = list(size=5)))
+p_duplipathwaysREDUNDANT
+```
+## speichern 
+```{r}
+
+pwREDUNDANTtableFig4mm2m[variable =="enrichment_hamster",plotid := paste("hamster", celltype, hamster, term_name, value)]
+pwREDUNDANTtableFig4mm2m[variable =="enrichment_human",plotid := paste("human",celltype,  human, term_name, value)]
+
+pwREDUNDANTtableFig3[,plotid := paste(species %>% str_replace("PR|MA", ""), celltype, contrast1, term_name, enrichment %>% round(.,1))]
+
+
+qlist766  = venn2(pwREDUNDANTtableFig4mm2m$plotid, pwREDUNDANTtableFig3$plotid)
+pwREDUNDANTtableFig4mm2m[, intersection := pwREDUNDANTtableFig3[match_hk(pwREDUNDANTtableFig4mm2m$plotid, pwREDUNDANTtableFig3$plotid, makeunique = T, importcol = pwREDUNDANTtableFig3$intersection),intersection]]
+pwREDUNDANTtableFig4mm2m[, source := pwREDUNDANTtableFig3[match_hk(pwREDUNDANTtableFig4mm2m$plotid, pwREDUNDANTtableFig3$plotid, makeunique = T, importcol = pwREDUNDANTtableFig3$source),source]]
+pwREDUNDANTtableFig4mm2m[, term_id  := pwREDUNDANTtableFig3[match_hk(pwREDUNDANTtableFig4mm2m$plotid, pwREDUNDANTtableFig3$plotid, makeunique = T, importcol = pwREDUNDANTtableFig3$term_id),term_id ]]
+pwREDUNDANTtableFig4mm2m[,.N, source]
+
+pwREDUNDANTtableFig4mm2m[, p_value.adjusted  := pwREDUNDANTtableFig3[match_hk(pwREDUNDANTtableFig4mm2m$plotid, pwREDUNDANTtableFig3$plotid, makeunique = T, importcol = pwREDUNDANTtableFig3$p_value.adjusted),p_value.adjusted ]]
+
+pwREDUNDANTtableFig4mm2m[, term_size   := pwREDUNDANTtableFig3[match_hk(pwREDUNDANTtableFig4mm2m$plotid, pwREDUNDANTtableFig3$plotid, makeunique = T, importcol =  pwREDUNDANTtableFig3$term_size),term_size  ]]
+
+pwREDUNDANTtableFig4mm2m[, query_size   := pwREDUNDANTtableFig3[match_hk(pwREDUNDANTtableFig4mm2m$plotid, pwREDUNDANTtableFig3$plotid, makeunique = T, importcol = pwREDUNDANTtableFig3$query_size ),query_size  ]]
+
+pwREDUNDANTtableFig4mm2m[, intersection_size   := pwREDUNDANTtableFig3[match_hk(pwREDUNDANTtableFig4mm2m$plotid, pwREDUNDANTtableFig3$plotid, makeunique = T, importcol = pwREDUNDANTtableFig3$intersection_size ),intersection_size  ]]
+
+
+pwREDUNDANTtableFig4mm2m[, precision      := pwREDUNDANTtableFig3[match_hk(pwREDUNDANTtableFig4mm2m$plotid, pwREDUNDANTtableFig3$plotid, makeunique = T, importcol = pwREDUNDANTtableFig3$precision    ),precision     ]]
+
+pwREDUNDANTtableFig4mm2m[, recall       := pwREDUNDANTtableFig3[match_hk(pwREDUNDANTtableFig4mm2m$plotid, pwREDUNDANTtableFig3$plotid, makeunique = T, importcol = pwREDUNDANTtableFig3$recall     ),recall      ]]
+
+pwREDUNDANTtableFig4mm2m[, expected_pct       := pwREDUNDANTtableFig3[match_hk(pwREDUNDANTtableFig4mm2m$plotid, pwREDUNDANTtableFig3$plotid, makeunique = T, importcol = pwREDUNDANTtableFig3$expected_pct     ),expected_pct      ]]
+
+pwREDUNDANTtableFig4mm2m[, obsersved_pct       := pwREDUNDANTtableFig3[match_hk(pwREDUNDANTtableFig4mm2m$plotid, pwREDUNDANTtableFig3$plotid, makeunique = T, importcol = pwREDUNDANTtableFig3$obsersved_pct     ),obsersved_pct      ]]
+
+pwREDUNDANTtableFig4mm2m[,.N, source]
+
+
+qlist111 = venn2(pwREDUNDANTtableFig4mm2m$plotid, pwtableFig4mm2m$plotid)
+str(qlist111)
+
+pwREDUNDANTtableFig4mm2m[, lowredundant_4figure := plotid %in% pwtableFig4mm2m$plotid ]
+pwREDUNDANTtableFig4mm2m[,.N, lowredundant_4figure]
+
+```
+## make a single pathway table 
+```{r}
+pwtable2[,  plotid := ifelse(grepl("hamster", species), paste("hamster",celltype, contrast1, term_name, round(enrichment, 1)),
+                             ifelse(grepl("human", species), paste("human",celltype, contrast1, term_name, round(enrichment, 1)), NA))]
+
+qlist111b = venn3(pwREDUNDANTtableFig4mm2m$plotid, pwtable2$plotid,pwtableFig4mm2m$plotid)
+str(qlist111b)
+
+pwtable2[, in_humanANDhamster := ifelse(plotid %in% pwtableFig4mm2m$plotid, "in Human & Hamster (incl. in Fig.)",
+                                        ifelse(plotid %in% pwREDUNDANTtableFig4mm2m$plotid, "in Human & Hamster (excl. in Fig.)", ""))]
+
+writexl::write_xlsx(list(pathwayenrich = pwtable2),here("R/results/h245_7_pathways.xlsx"))
+
+```
+
+
+## finalize
+
+```{r}
+finalizeSkript()
+
+```

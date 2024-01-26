@@ -1,0 +1,151 @@
+---
+title: "h235_3_save_unionHumanMA_unionHumanPR_PUREcluster"
+format:
+  html:
+    df-print: kable
+    fig-width: 10
+    fig-height: 7
+    code-fold: true
+    code-summary: "Show the code"
+    toc: true
+    toc-location: left
+    toc-depth: 3
+    number-sections: false
+    standalone: true
+    embed-resources: true
+editor: source
+execute:
+  cache: false
+editor_options:
+  chunk_output_type: console
+---
+
+# INITITATE
+
+```{r}
+
+#' # INITIIEREN ####
+.libPaths()
+
+library(toolboxH)
+library(Seurat)
+
+library(here)
+
+```
+
+# AIM
+
+Save filtered objects for analyses
+
+# LOAD
+
+```{r}
+
+seurat_pre = readRDS(here("R/results/h228_3_qc_integrated_rpca_cellanno_FILTEREDqc_FILTEREDpureCells.rds"))
+seurat_pre$uniform_name_overview_keep %>% mytable()
+seurat_pre
+
+
+cellanno_pre = fread(here("R/results/h228_3_qc_integrated_rpca_cellanno_FILTEREDqc_FILTEREDpureCells.txt.gz"))
+qlist1 = venn2(cellanno_pre$rn, colnames(seurat_pre))
+cellanno = cellanno_pre[rn %in% colnames(seurat_pre)]
+```
+
+```{r}
+humanMA = readRDS(here("R/results/h227_2_humanMA_rpca_FILTERED_JOINED_seurat.RDS"))
+humanMA
+humanPR = readRDS(here("R/results/h227_2_humanPR_rpca_FILTERED_JOINED_seurat.RDS"))
+humanPR
+
+qlist2 = venn3(colnames(humanMA),
+               colnames(humanPR),
+               colnames(seurat_pre))
+
+```
+
+# Restrict to relevant celltypes
+```{r}
+allcelltypes_pre = unique(seurat_pre$uniform_name_overview3)
+allcelltypes = setdiff(allcelltypes_pre,"")
+allcelltypes
+
+cellanno = cellanno[uniform_name_overview3 %in% allcelltypes]
+seurat = seurat_pre[, seurat_pre$uniform_name_overview3 %in% allcelltypes]
+seurat
+
+humanMA = humanMA[, humanMA$uniform_name_overview %in% allcelltypes & colnames(humanMA) %in% cellanno$rn]
+humanPR = humanPR[, humanPR$uniform_name_overview %in% allcelltypes& colnames(humanPR) %in% cellanno$rn]
+
+qlist3 = venn3(colnames(humanMA),
+               colnames(humanPR),
+               colnames(seurat))
+
+
+```
+
+# add important annotations
+```{r}
+humanMA$uniform_name_overview3 = cellanno[match_hk(colnames(humanMA), cellanno$rn), uniform_name_overview3]
+table(humanMA$uniform_name_overview3, humanMA$uniform_name_overview)
+
+humanPR$uniform_name_overview3 = cellanno[match_hk(colnames(humanPR), cellanno$rn), uniform_name_overview3]
+table(humanPR$uniform_name_overview3, humanPR$uniform_name_overview)
+```
+
+
+```{r}
+humanMA$severity = ifelse(humanMA$species =="human", humanMA$who_per_sample, humanMA$timepoint)
+humanMA$severity %>% mytable()
+
+humanPR$severity = ifelse(humanPR$species =="human", humanPR$who_per_sample, humanPR$timepoint)
+humanPR$severity %>% mytable()
+
+```
+
+## genes
+```{r}
+qlist3 = venn2(rownames(humanMA),
+               rownames(humanPR))
+```
+
+## human with all genes
+
+```{r}
+humanfull = readRDS(here("R/results/h220_5_qc_human_singlestudy.rds"))
+humanfull
+humanfull$severity = humanfull$who_per_sample
+
+qlist5 = venn2(colnames(humanfull), cellanno$rn)
+
+humanfull = humanfull[, colnames(humanfull) %in% cellanno$rn]
+humanfull
+humanfull$uniform_name_overview3 = cellanno[match_hk(colnames(humanfull), cellanno$rn), uniform_name_overview3]
+table(humanfull$uniform_name_overview3, humanfull$uniform_name_overview)
+
+DefaultAssay(humanfull) = "RNA"
+humanfull= DietSeurat(humanfull, layers =  c("counts", "data") , assays = "RNA")
+humanfull$species = "human"
+human_cellanno = humanfull@meta.data %>% data.table(keep.rownames = T)
+human_cellanno[,.N, .(lowQC_or_doublet_cell,lowQC_or_doublet_cluster)]
+
+
+```
+
+## save 
+```{r}
+fwrite(human_cellanno, here("R/results/h235_3_humanMA_union_FILTEREDcelltype.txt.gz"))
+saveRDS(humanfull, here("R/results/h235_3_human_FILTEREDcelltype.RDS"))
+
+saveRDS(humanMA, here("R/results/h235_3_humanMA_union_FILTEREDcelltype.RDS"))
+saveRDS(humanPR, here("R/results/h235_3_humanPR_union_FILTEREDcelltype.RDS"))
+
+```
+
+
+## finalize
+
+```{r}
+finalizeSkript()
+
+```

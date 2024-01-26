@@ -1,0 +1,744 @@
+---
+title: "h240_3_differential_expresssion"
+format:
+  html:
+    df-print: kable
+    fig-width: 10
+    fig-height: 7
+    code-fold: true
+    code-summary: "Show the code"
+    toc: true
+    toc-location: left
+    toc-depth: 3
+    number-sections: false
+    standalone: true
+    embed-resources: true
+editor: source
+execute:
+  cache: false
+editor_options:
+  chunk_output_type: console
+---
+
+# INITITATE
+
+```{r}
+
+#' # INITIIEREN ####
+ 
+.libPaths()
+ 
+library(Seurat)
+library(SeuratDisk)
+library(toolboxH)
+library(here)
+library(ggplot2)
+library(scales)
+library(ggthemes)
+# BiocManager::install("scRNAseq")
+library(SingleR)
+library(BiocParallel)
+library(patchwork)
+library(harmony)
+require(gprofiler2)
+ 
+
+library(future) #https://satijalab.org/celllines/archive/v3.0/future_vignette.html
+options(future.globals.maxSize= 30*1024^3) # to prevent the error
+future.seed=TRUE # to care for proper random seeds
+# The total size of the 15 globals exported for future expression ('FUN()') is 12.32 GiB.. This exceeds the maximum allowed size of 500.00 MiB (option 'future.globals.maxSize'). The three largest globals are 'object' (12.26 GiB of class 'numeric'), 'split.cells' (54.18 MiB of class 'list') and 'rowVars' (226.99 KiB of class 'function')
+ncores = 4
+plan("multicore", workers = ncores)
+ 
+
+
+scCalcDE_limmaVoom <- function(seurat, idcolumn, diseasecolumn, voomplot_label = paste("using IDs in column", idcolumn, "and contrast in column",diseasecolumn), plot_MAplot=T, min.prop=0.7) {
+  message("making sce object from RNA counts slot ....")
+  # https://hbctraining.github.io/scRNA-seq_online/lessons/pseudobulk_DESeq2_scrnaseq.html
+  # Extract raw counts and metadata to create SingleCellExperiment object
+  # seurat=mysubseurat
+  # idcolumn =column_individual
+  # diseasecolumn=column_contrast
+  # voomplot_label=paste0( myspecies,", ", mycelltype,", ", mycontrast, " vs. ", categ_control)
+  # plot_MAplot=T
+
+  # if(grepl("hamster", idcolumn)) {
+  #    seurat$hamstertimepoint = paste0(seurat$hamster,  seurat$timepoint)
+  #  message("Added individual variable hamstertimepoint")
+  #      table(seurat$hamstertimepoint, useNA ="always") %>% print()
+  # 
+  #  }
+  
+  stopifnot(idcolumn %in% names(seurat@meta.data))
+  stopifnot(diseasecolumn %in% names(seurat@meta.data))
+  counts <- seurat@assays$RNA@counts 
+  
+  metadata <- seurat@meta.data
+  metadata
+  # Set up metadata as desired for aggregation and DE analysis
+  # metadata$cluster_id <- factor(mycelltype)
+  
+  # Create single cell experiment object
+  sce <- SingleCellExperiment(assays = list(counts = counts), 
+                              colData = metadata)
+  
+  rowData(sce)[["symbol"]] = rownames(sce)
+  rowData(sce)
+  stopifnot(sum(duplicated(rowData(sce)[["symbol"]]))==0)
+  summed_object <- aggregateAcrossCells(sce, 
+                                        ids=colData(sce)[,c(idcolumn), drop=F])
+  summed_object
+  head(summed_object@colData)
+  rownames(summed_object@colData) = summed_object@colData[[idcolumn]] %>% as.character()
+  # Here, we will use the `voom` pipeline from the `r Biocpkg("limma")` package instead of the QL approach with `r Biocpkg("edgeR")`.
+  # This allows us to use sample weights to better account for the variation in the precision of each pseudo-bulk profile.
+
+  
+  
+  y_DGEList <- DGEList(counts(summed_object), samples=colData(summed_object),
+                       genes=rowData(summed_object)[,"symbol",drop=FALSE]) # default for library size is lib.size = colSums(counts), baut das objekt fur DE
+  y_DGEList
+  y_DGEList$samples
+  before_filt = nrow(y_DGEList)
+  y_DGEList <- y_DGEList[filterByExpr(y_DGEList, group=y_DGEList$samples[[diseasecolumn]],min.prop = min.prop ),] #Determine which genes have sufficiently large counts to be retained in a statistical analysis.  Roughly speaking, the strategy keeps genes that have at least min.count reads in a worthwhile number samples. Defaults min.count = 10 (Minimum count required for at least some samples.), min.total.count = 15 numeric. Minimum total count required., large.n = 10 (nteger. Number of samples per group that is considered to be “large”.), min.prop = 0.7 (numeric. Minimum proportion of samples in the smallest group that express the gene)
+  message("CPMs before scaling with NormFactors")
+  cpm(y_DGEList) %>% hh() %>% print()
+  after_filt = nrow(y_DGEList)
+  message("Filtering genes for minimum expression level according to defaults of `edgeR::filterByExpr` from ", before_filt, " to ", after_filt, " genes.")
+  y_DGEList <- calcNormFactors(y_DGEList) # Calculate scaling factors to convert raw library sizes into effective library sizes.
+  message("CPMs after scaling with NormFactors")
+  cpm(y_DGEList) %>% hh() %>% print()
+  
+  expr_text = paste0('design <- model.matrix(~',diseasecolumn,', y_DGEList$samples)')
+  expr_text
+  eval(parse(text = expr_text))
+  design
+  v_EList <- voomWithQualityWeights(y_DGEList, design) # This function is an alternative to voom and, like voom, is intended to process RNA-seq data prior to linear modeling in limma. It combines observational-level weights from voom with sample-specific weights estimated using the arrayWeights function. The method is described by Liu et al (2015).
+  fit_mycelltype <- lmFit(v_EList)
+  fit_mycelltype <- eBayes(fit_mycelltype, robust=TRUE)
+  
+  # plot -----
+  message( "Diagnostic plots for `voom` after estimating observation and quality weights from the beta cell pseudo-bulk profiles. The left plot shows the mean-variance trend used to estimate the observation weights, while the right plot shows the per-sample quality weights.")
+  voomplot = voomWithQualityWeights(y_DGEList, design, plot=TRUE)
+  mtext(voomplot_label)
+  
+  if(plot_MAplot==T)  {  
+    message("MA plots for the beta cell pseudo-bulk profiles. Each MA plot is generated by comparing the corresponding pseudo-bulk profile against the average of all other profiles")
+    
+    par(mfrow=c(3, 4))
+    for (i in colnames(y_DGEList)) {
+      try(plotMD(y_DGEList, column=i))
+    }
+    mtext(voomplot_label)
+  }
+  res = c()
+  res$design = design
+  res$voomplot_label = voomplot_label
+  res$MArrayLM = fit_mycelltype
+  res$DGEList = y_DGEList
+  res$weights  = voomplot$targets
+  res
+  
+  
+  
+}
+
+```
+
+# AIM
+
+ Differential Expression
+
+# LOAD
+
+```{r}
+
+cellanno_pre = fread(here("R/results/h228_3_qc_integrated_rpca_cellanno_FILTEREDqc_FILTEREDpureCells.txt.gz"))
+cellanno_pre[,.N,.(uniform_name_overview3,uniform_name_overview_keep)]
+
+
+cellanno = cellanno_pre[uniform_name_overview_keep ==T]
+cellanno[,.N,uniform_name_overview_keep]
+
+humanMA = readRDS( here("R/results/h235_3_humanMA_union_FILTEREDcelltype.RDS"))
+humanMA
+humanPR= readRDS( here("R/results/h235_3_humanPR_union_FILTEREDcelltype.RDS"))
+humanPR
+human = readRDS( here("R/results/h235_3_human_FILTEREDcelltype.RDS"))
+human
+
+```
+
+# Restrict to relevant celltypes
+
+```{r}
+
+allcelltypes_pre = unique(cellanno$uniform_name_overview3)
+allcelltypes = setdiff(allcelltypes_pre,"")
+allcelltypes 
+
+cellanno = cellanno[uniform_name_overview3 %in% allcelltypes]
+
+humanMA$species %>% table()
+hamsterMA = humanMA[, humanMA$species=="hamsterMA"]
+hamsterMA
+
+humanPR$species %>% table()
+hamsterPR = humanPR[, humanPR$species=="hamsterPR"]
+hamsterPR
+
+
+qlist4 = venn4(cellanno$rn, colnames(human), colnames(hamsterMA), colnames(hamsterPR))
+qlist5 = venn3(rownames(human), rownames(hamsterMA), rownames(hamsterPR))
+
+```
+
+# Data orga
+## Define individuals
+
+
+### human groups
+Here, I group 4 and 5, allthough this skips a category, as I need at least 2 for comparison. 
+
+```{r}
+
+cellanno[, severity_rekateg := ifelse(severity %in% c("4", "5"), "4u5", severity)]
+cellanno[, .N, .(severity,severity_rekateg)]
+human$severity_rekateg= ifelse(human$severity %in% c("4", "5"), "4u5", human$severity)
+
+
+humananno = human@meta.data %>% as.data.table(keep.rownames = T)
+
+human2add = humananno[,.(N=uniqueN(donor)), .(severity_rekateg = severity_rekateg, species, celltype=uniform_name_overview3)][order(severity_rekateg)]  %>% .[, controlname := 0] %>% .[,name_individ := "donor"] %>% .[,name_contrast := "severity_rekateg"]
+human2add
+```
+
+
+
+### hamster ma groups
+```{r}
+hamsterMA$hamstertimepoint = paste(hamsterMA$hamster, hamsterMA$timepoint)
+maanno = hamsterMA@meta.data %>% as.data.table(keep.rownames = T)
+maanno[1]
+
+ma2add = maanno[,.(N=uniqueN(hamstertimepoint)), .(severity_rekateg=timepoint,species, celltype=uniform_name_overview3)][order(severity_rekateg)][, controlname := "d0"] %>% .[,name_individ := "hamstertimepoint"] %>% .[,name_contrast := "timepoint"]
+ma2add
+```
+
+### hamster rb groups
+```{r}
+hamsterPR$hamstertimepoint = paste(hamsterPR$hamster, hamsterPR$timepoint)
+
+pranno = hamsterPR@meta.data %>% as.data.table(keep.rownames = T)
+pranno[1]
+pr2add = pranno[,.(N=uniqueN(hamstertimepoint)), .(severity_rekateg=timepoint,species, celltype=uniform_name_overview3)][order(severity_rekateg)][, controlname := "D0"]%>% .[,name_individ := "hamstertimepoint"] %>% .[,name_contrast := "timepoint"]
+pr2add
+```
+
+### combine
+```{r}
+allanno = rbind(human2add, ma2add, pr2add)
+allanno
+showNA(allanno)
+```
+
+I can only have at leats N=2
+```{r}
+stopifnot(min(allanno$N)>1)
+```
+
+### Visualise N Cells used in Pseudocounting
+```{r}
+
+humananno$objectname = "human"
+maanno$objectname = "hamsterMA"
+pranno$objectname = "hamsterPR"
+
+cellcounts_human = lapply(allcelltypes, function(mycelltype) {
+
+  myanno = humananno %>% .[,.(rn,species=objectname,celltype = uniform_name_overview3, severity_rekateg = severity_rekateg, doublett = 'Singlet')]
+  
+}) %>% rbindlist()
+
+
+cellcounts_ma = lapply(allcelltypes, function(mycelltype) {
+
+  myanno = maanno %>% .[,.(rn,species=objectname,celltype = uniform_name_overview3, severity_rekateg = timepoint, doublett = 'Singlet')]
+  
+}) %>% rbindlist()
+
+
+cellcounts_pr = lapply(allcelltypes, function(mycelltype) {
+  # mycelltype = allcelltypes[1]
+  myanno =  pranno %>% .[,.(rn,species=objectname,celltype = uniform_name_overview3, severity_rekateg = timepoint, doublett = 'Singlet')]
+  
+}) %>% rbindlist()
+
+cellcounts = rbind(cellcounts_human,
+                   cellcounts_ma,
+                   cellcounts_pr)
+
+cellcounts[,.N, .(doublett, species)]
+n_cells = cellcounts[ , .N, .( species, celltype, severity_rekateg, doublett)][order( species, celltype, severity_rekateg, doublett)]   
+
+n_cells[, singlet_proz := N[doublett=='Singlet']/sum(N),.( species, celltype, severity_rekateg) ]
+n_cells
+n_cells[is.na(singlet_proz)]
+n_cells[, singlet_proz2 := ifelse(doublett=="n.a.", "n.a.", proz(singlet_proz, stellen = 0))]
+
+n_cells2 = n_cells[, .(N  = sum(N), 
+                       singlet_proz = unique(singlet_proz),
+                       singlet_proz2 = unique(singlet_proz2)
+),
+.( species, celltype, severity_rekateg) ]
+n_cells2[, barlabel := paste0(N,  " (",singlet_proz2,")")]
+n_cells2
+stopifnot(nrow(n_cells2[,allDuplicatedEntries(paste(species, celltype, severity_rekateg))])==0)
+
+# check also that a D0 category is present
+qlist66 = venn2(allanno[controlname==severity_rekateg, paste(species, celltype,controlname)],
+                allanno[, paste(species, celltype, controlname     )])
+
+
+allanno_no_controls = allanno[ paste(species, celltype, controlname     ) %in% qlist66$q3, paste(species, celltype) %>% unique()] 
+
+message("Excluding ", paste(allanno_no_controls, collapse = "\n"), " as there are no controls in for this celltype in this species")
+
+allanno = allanno[ paste(species, celltype) %nin% allanno_no_controls]
+
+severitylevels=c("0","3", "4u5", "7", "d0","d2", "d3", "d5", "e14", "D0","ld_D2", "hd_D2","ld_D3","hd_D3")
+n_cells2[, severity_rekateg := factor(severity_rekateg, levels = severitylevels)]
+p0 = ggplot(n_cells2, aes(reorder(celltype, -N), N,alpha = singlet_proz, fill = severity_rekateg,label  = barlabel)) + 
+  geom_col( col = "black",linewidth = 0.2, position = position_dodge(width = 0.9)) + 
+  theme_minimal(base_size = 14) +
+  geom_text(position = position_dodge(width = 0.9),hjust = -0.1, angle  = 90, size = 2.1)+
+  theme(axis.text.x = element_text(angle =90, vjust  = 0.4, hjust = 1))   + facet_grid(.~species, scales= "free") + xlab("") + 
+  # scale_y_log10(breaks = log_breaks(10)) + 
+  scale_y_sqrt(breaks = c(10,100,500,1000,5000,10000)) + 
+  ggtitle("N cells for pseudocount calculation")+
+  scale_alpha_continuous(range = c(0.4,1))
+p0
+
+jpeg2(here("R/results/h240_3_N_cells_in_limma_voom.jpeg"), 11,6)
+p0
+dev.off()
+```
+
+### Visualise N Individuals
+```{r}
+p1 = ggplot(allanno, aes(reorder(celltype, -N), N, fill = severity_rekateg, col = severity_rekateg)) + geom_col(col = "black", linewidth = 0.2, alpha = 0.5) + 
+  theme_minimal(base_size = 14) +
+  theme(axis.text.x = element_text(angle =90, vjust  = 0.4, hjust = 1))   + facet_grid(.~species, scales= "free") + xlab("") + scale_y_continuous(breaks = pretty_breaks(10)) + ggtitle("N Inidividuals in Limma-Voom") + 
+  labs(fill = "Contrast\nvs.\nControl")
+p1
+
+jpeg2(here("R/results/h240_3_N_Individuals_limma_voom.jpeg"), 7,5)
+p1
+dev.off()
+```
+
+
+# DiffEx with limma voom
+
+http://bioconductor.org/books/3.14/OSCA.workflows/segerstolpe-human-pancreas-smart-seq2.html#segerstolpe-comparison
+
+### filter
+hier filtern auf species wenn gewollt
+```{r}
+todo = allanno
+todo
+
+fwrite(allanno, here("R/results/h240_3_allanno_celltype_individual_contrasts.txt.gz"), sep = "\t")
+```
+
+### schleife
+```{r}
+require(scuttle)
+library(edgeR)
+
+allspecies = unique(todo$species)
+
+species_res = lapply(allspecies, function(myspecies){
+ 
+  todo_species = todo[species ==myspecies]
+  
+  myseurat_all = get(unique(todo_species$species))
+  allcelltypes = unique(todo_species$celltype)
+  
+  ###############
+  celltype_res = lapply(allcelltypes, function(mycelltype){
+
+    myseurat = subset(myseurat_all, uniform_name_overview3==mycelltype)
+    
+    
+    
+    todo_contrasts = todo_species[celltype ==mycelltype]
+    allcontrasts = todo_contrasts[severity_rekateg %nin% controlname, severity_rekateg %>% as.character()]
+    
+    #####################
+    contrast_res = lapply(allcontrasts, function(mycontrast){
+
+      # update grouping
+      
+      
+      column_individual = todo_contrasts$name_individ %>% unique()
+      column_contrast = todo_contrasts$name_contrast %>% unique()
+      categ_control = todo_contrasts$controlname %>% unique()
+      
+      filtercol = as.character(myseurat@meta.data[[column_contrast]]) %in% c(mycontrast, categ_control)
+      mytable(filtercol)
+      mysubseurat = myseurat[,filtercol  ]
+      mysubseurat@meta.data[[column_contrast]] = as.character(mysubseurat@meta.data[[column_contrast]])
+    
+       table(mysubseurat@meta.data[[column_individual]],mysubseurat@meta.data[[column_contrast]])
+      message("======================================================================================\nDoing DE for group ", myspecies,", ", mycelltype,", ", mycontrast, " vs. ", categ_control)
+      allstats = scCalcDE_limmaVoom(
+        seurat=mysubseurat,
+        idcolumn =column_individual,
+        diseasecolumn=column_contrast,
+        voomplot_label=paste0( myspecies,", ", mycelltype,", ", mycontrast, " vs. ", categ_control), 
+        min.prop = 0.5
+      )
+      
+      
+      
+      mycoeff = grep(column_contrast,colnames(allstats$MArrayLM$coefficients), value = T)
+      mytoptable =   cbind(species = myspecies,
+                           celltype = mycelltype,
+                           contrast1 = mycontrast,
+                           contrast0 = categ_control,
+                           
+                           topTable(allstats$MArrayLM, coef = mycoeff, sort.by="p", n=Inf))
+      mytoptable
+    }) %>% rbindlist()
+    
+    
+    contrast_res[, P.Value_BH_Contrast := p.adjust(P.Value, method = "BH")]
+    
+  }) %>% rbindlist()
+  
+  
+  celltype_res[, P.Value_BH_Celltype := p.adjust(P.Value, method = "BH")]
+  
+}) %>% rbindlist()
+species_res[, P.Value_BH_Species := p.adjust(P.Value, method = "BH")]
+
+
+
+```
+
+### DE Speichern
+```{r}
+
+todo2 = todo[severity_rekateg != controlname] # this was not compared
+todo2[, id := .I]
+todo2[,stopifnot(nrow(allDuplicatedEntries(paste(species, celltype, severity_rekateg)))==0)]
+todo2 = moveColFront(todo2, "id")
+writexl::write_xlsx(list(todo2=todo2),  here("R/results/h240_3_DE_TODOoverview.xlsx"))
+todo2[, idtag := paste(species, celltype, severity_rekateg)]
+
+
+todo2[, idtag := paste(species, celltype, severity_rekateg)]
+
+species_res[, idtag := paste(species, celltype, contrast1)]
+species_res[, id:= todo2[match_hk(species_res$idtag, todo2$idtag), id]]
+species_res = moveColFront(species_res, "id")
+species_res$idtag=NULL
+
+par(mfrow = c(1,1))
+qlist544 = venn2(species_res$id, todo2$id)
+saveRDS(species_res, here("R/results/h240_3_DE_.RDS"))
+fwrite(species_res, here("R/results/h240_3_DE_.txt.gz"), sep = "\t")
+
+```
+
+### Visualise N Genes
+```{r}
+searchtag = "^RP[SL][[:digit:]]|^RPLP[[:digit:]]|^RPSA|Malat1|Mt-|KCNQ1ot1|Ugdh-AS1|EEF1a[0-9]"
+
+message("Not counting QC likely genes with searchtag ", searchtag)
+species_res2 = species_res[grepl(searchtag, symbol, ignore.case = T)==F]
+message("Not counting ", uniqueN(species_res$symbol) - uniqueN(species_res2$symbol), " of ",uniqueN(species_res$symbol)," genes, i.e.\n",grep(searchtag, species_res$symbol, value = T, ignore.case = T) %>% unique() %>%  sort(decreasing = T) %>% paste(collapse = ", ")) # Ugdh-AS1 is not Ugdh
+
+n_genes = species_res2[ , .(N=uniqueN(symbol)), .(id, species, celltype, contrast1)]   
+
+p2 = ggplot(n_genes, aes(reorder(celltype, -N), N, fill = contrast1, col = contrast1)) + geom_col(col = "black", linewidth = 0.2, alpha = 0.5, position = "dodge") + 
+  theme_minimal(base_size = 14) +
+  theme(axis.text.x = element_text(angle =90, vjust  = 0.4, hjust = 1))   + facet_grid(.~species, scales= "free") + 
+xlab("") + 
+  scale_y_continuous(breaks = pretty_breaks(10)) + 
+  ggtitle("N genes in Limma-Voom after edgeR:: filterByExpr") + 
+  labs(fill = "Contrast\nvs.\nControl")
+p2
+
+jpeg2(here("R/results/h240_3_N_genes_afterFilterByExpr_in_limma_voom.jpeg"), 7,5)
+p2
+dev.off()
+
+fwrite( n_genes, here("R/results/h240_3_N_genes_afterFilterByExpr_in_limma_voom.txt"))
+
+
+```
+
+
+# pathway enrichment
+
+```{r}
+doGost = function(fg, bg, 
+                  param_DEpathway_max_term_sizeTOPs 	=500,
+                  param_DEpathway_min_intersection_sizeTOPs 	=2,
+                  param_DEpathway_min_intersection_size 	=2,
+                  param_DEpathway_max_showTOPs =	25,
+                  organism = "mmusculus", ordered_query = FALSE, 
+                  multi_query = FALSE, significant = F, exclude_iea = FALSE, 
+                  measure_underrepresentation = FALSE, evcodes = T, 
+                  user_threshold = 0.05, correction_method = "g_SCS", 
+                  domain_scope = "annotated", 
+                  numeric_ns = "", sources = NULL)
+{
+  
+  # In the results:
+  # precision - which percentage of the fg is found in the overlap pathway-foreground
+  # recall - how many percent of the pathway is found in the overlap pathway-foreground
+  
+  
+  if(length(fg >1)) {
+    gostres <- gost(query = fg, custom_bg = bg,   organism = organism, ordered_query = ordered_query, 
+                    multi_query = multi_query, significant = significant, exclude_iea = exclude_iea, 
+                    measure_underrepresentation = measure_underrepresentation, evcodes = evcodes, 
+                    user_threshold = user_threshold, correction_method = correction_method, 
+                    domain_scope = domain_scope, 
+                    numeric_ns = numeric_ns, sources = sources, as_short_link = FALSE)
+
+    status = "gost done"
+  } else{ 
+    status = "fg not > 1"
+    gostres = NULL
+  }
+  
+  if(is.null(gostres)==F) {
+    
+    gostres$result$expected_pct = gostres$result$term_size / gostres$result$effective_domain_size
+    gostres$result$obsersved_pct = gostres$result$intersection_size / gostres$result$query_size
+    gostres$result$enrichment = gostres$result$obsersved_pct / gostres$result$expected_pct
+    
+    message("P.values are experiment-wide adjusted\nsee https://biit.cs.ut.ee/gprofiler/page/docs#significance_threhshold")
+    setnames(gostres$result, "p_value", "p_value.adjusted")
+    
+    gostres$result = gostres$result[order(gostres$result$p_value.adjusted),]
+    
+    gostres$result = moveColFront(gostres$result, c("query", "significant", "p_value.adjusted", "term_size", "query_size",
+      "intersection_size", "precision", "recall", "expected_pct", "obsersved_pct",
+      "enrichment"))
+    
+    
+    gostres$result_dt = copy(data.table(gostres$result))
+
+    gostres$result_dt = gostres$result_dt[intersection_size >=param_DEpathway_min_intersection_size]
+    gostres$result_dt = gostres$result_dt[significant==T]
+
+    
+    setorder(gostres$result_dt, p_value.adjusted)
+    gostres$result_dt[duplicated(intersection)==F  & term_size<=param_DEpathway_max_term_sizeTOPs & intersection_size>= param_DEpathway_min_intersection_sizeTOPs,top := term_id %in% term_id[order(p_value.adjusted)][1:param_DEpathway_max_showTOPs] |
+                        term_id %in% term_id[order(-enrichment)][1:param_DEpathway_max_showTOPs] |
+                        term_id %in% term_id[order(-precision)][1:param_DEpathway_max_showTOPs] ]
+    
+    gostres$result_dt[duplicated(intersection)==F   ,top_unfiltered := term_id %in% term_id[order(p_value.adjusted)][1:param_DEpathway_max_showTOPs] |
+                        term_id %in% term_id[order(-enrichment)][1:param_DEpathway_max_showTOPs] |
+                        term_id %in% term_id[order(-precision)][1:param_DEpathway_max_showTOPs] ]
+    
+    
+    gostres$result_dt[top==T][allDuplicatedEntries(intersection)]
+    gostres$result_dt[,.N, .(top, top_unfiltered)]
+
+    
+    gostres_link <- gost(query = fg, 
+                         custom_bg = bg, 
+                         organism = organism, ordered_query = ordered_query, 
+                         multi_query = multi_query, significant = significant, exclude_iea = exclude_iea, 
+                         measure_underrepresentation = measure_underrepresentation, evcodes = evcodes, 
+                         user_threshold = user_threshold, correction_method = correction_method, 
+                         domain_scope = domain_scope, 
+                         numeric_ns = numeric_ns, sources = sources, as_short_link = TRUE)
+    
+    plot_ids = gostres$result_dt[top ==T, term_id]
+    if(length(plot_ids)==0) plot_ids = gostres$result_dt[top_unfiltered ==T, term_id]
+    pt2 <- try(publish_gosttable(gostres, 
+                                 highlight_terms = gostres$result[gostres$result$term_id %in% plot_ids,],
+                                 use_colors = TRUE, 
+                                 show_columns = c("source", "term_name", "term_size", "intersection_size","enrichment","precision"     ,"recall"),
+                                 filename = NULL))
+    
+    status= "gostress_results_found"
+  } else{
+    gostres_link = NULL
+    pt2 = qplot()
+    if( status %nin% c("gostress_results_found", "fg not > 1")) status=  "No gostress results to show"
+  }
+  
+  
+  res = c()
+  res$status = status
+  
+  res$fg = fg
+  res$bg = bg
+  
+  res$gostres = gostres
+  res$gostres_link = gostres_link
+  res$publish_table_top = pt2
+  res
+}
+
+```
+
+
+```{r}
+
+
+species_res_pw = lapply(allspecies, function(myspecies){
+  # myspecies = allspecies[1]
+  todo_species = todo[species ==myspecies]
+  
+  allcelltypes = unique(todo_species$celltype)
+  
+  ###############
+  celltype_res = lapply(allcelltypes, function(mycelltype){
+   
+    
+    todo_contrasts = todo_species[celltype ==mycelltype]
+    allcontrasts = todo_contrasts[severity_rekateg %nin% controlname, severity_rekateg %>% as.character()]
+    
+    #####################
+    contrast_res = lapply(allcontrasts, function(mycontrast){
+
+      
+      # update grouping
+      
+      
+      column_individual = todo_contrasts$name_individ %>% unique()
+      column_contrast = todo_contrasts$name_contrast %>% unique()
+      categ_control = todo_contrasts$controlname %>% unique()
+      
+       myDElist = species_res[species ==myspecies & celltype ==mycelltype & contrast1 == mycontrast]
+      
+      
+      message("======================================================================================\nDoing PW analysis for group ", myspecies,", ", mycelltype,", ", mycontrast, " vs. ", categ_control)
+      
+      myDElist[, absLogFC := abs(logFC)]
+      searchtag = "^RP[SL][[:digit:]]|^RPLP[[:digit:]]|^RPSA|Malat1|Mt-|KCNQ1ot1|Ugdh-AS1|EEF1a[0-9]"
+      
+      message("REmoving QC likely genes with searchtag ", searchtag)
+      myDElist2 = myDElist[grepl(searchtag, symbol, ignore.case = T)==F]
+      message("Removing ", uniqueN(myDElist$symbol) - uniqueN(myDElist2$symbol), " of ",uniqueN(myDElist$symbol)," genes, i.e.\n",grep(searchtag, myDElist$symbol, value = T, ignore.case = T) %>% sort(decreasing = T) %>% paste(collapse = ", ")) # Ugdh-AS1 is not Ugdh
+      
+      myDElist2[, p_BH := adj.P.Val] 
+      setorder(myDElist2, -absLogFC)        
+      fg_pre1 = myDElist2[p_BH<=0.2, .(symbol  = unique(na.omit(symbol)))][,rankFC := .I]
+      fg = fg_pre1[rankFC <=100, symbol]
+      if(length(fg)<30) {
+        setorder(myDElist2, P.Value)
+        fg_pre2 = myDElist2[, .(symbol  = unique(na.omit(symbol)))][,rankpval := .I]
+        message("Found for ", myspecies,", ", mycelltype,", ", mycontrast,' only ', nrow(fg_pre1), " Foreground genes, at FDR 20%, using top 30 ordered by p value genes only")
+        fg = fg_pre2[rankpval <=30, symbol]
+      }
+      
+      bg = myDElist2$symbol %>% unique()
+      # str(fg)
+      # str(bg)
+      
+      
+      pwtab= doGost(fg=fg, bg=bg, organism = "hsapiens",sources = c('GO:BP','KEGG', "REAC", "WP", "HP", "TF"))  # HS weil mapped to HS
+      pwtab_top = cbind(species = myspecies,
+                        celltype = mycelltype,
+                        contrast1 = mycontrast,
+                        contrast0 = categ_control,
+                        pwtab$gostres$result_dt[top_unfiltered==T]
+      )
+      pwtab_top
+      
+      pwtab_all = pwtab$gostres$result %>% as.data.table()
+      pwtab_all2 = cbind(species = myspecies,
+                         celltype = mycelltype,
+                         contrast1 = mycontrast,
+                         contrast0 = categ_control,
+                         pwtab_all[enrichment>1]
+      )
+      pwtab_all2[, n_fg := length(fg)]
+      
+      pwtab_all2[, n_bg := length(bg)]
+      
+      pwtab_all2[, top_all := term_id %in% pwtab_top$term_id]
+      pwtab_all2[, top_lessredunt := term_id %in% pwtab_top[ top==T, term_id]]
+      pwtab_all2
+      
+    }) %>% rbindlist()
+    
+    
+    
+  }) %>% rbindlist()
+  
+  
+}) %>% rbindlist()
+
+```
+
+
+
+## speichern 
+```{r}
+# add id
+
+species_res_pw[, idtag := paste(species, celltype, contrast1)]
+species_res_pw[, id:= todo2[match_hk(species_res_pw$idtag, todo2$idtag), id]]
+
+species_res_pw = moveColFront(species_res_pw, "id")
+species_res_pw$idtag=NULL
+fwrite(species_res_pw, here("R/results/h240_3_pw_enrichment.txt.gz"), sep = "\t")
+
+qlist11 = venn2(species_res_pw$id, todo2$id)
+
+
+```
+
+## top pathways separat
+```{r}
+species_res_pw_top_pre = species_res_pw[top_all ==T]
+qlist12 = venn2(species_res_pw$id, species_res_pw_top_pre$id)
+
+species_res_pw_top_pre[, significant := T]
+species_res_pw_top_pre[,.N, id][,hist(N, breaks = 20)]
+species_res_pw_top_pre[,.N, id][,summary(N)]
+
+```
+
+Add top 10, ordered by intersection gr 1 adj. pval (non-adj. not available) and -enrichment 
+
+```{r}
+species_res_pw_notIntop = species_res_pw[id %nin% species_res_pw_top_pre$id]
+species_res_pw_notIntop[, intersection_gr1 := intersection_size>1]
+setorder(species_res_pw_notIntop, -intersection_gr1, p_value.adjusted, -enrichment)
+species_res_pw_notIntop[, lfd_nr := 1:.N, id]
+species_res_pw_notIntop[, max(lfd_nr), id]
+
+species_res_pw_notIntop$top_all %>% mytable()
+species_res_pw_notIntop2 = species_res_pw_notIntop[lfd_nr <=10]
+species_res_pw_notIntop2$lfd_nr = NULL
+species_res_pw_notIntop2$intersection_gr1 = NULL
+
+species_res_pw_top = rbind(species_res_pw_top_pre, 
+                           species_res_pw_notIntop2
+)
+
+
+writexl::write_xlsx(list(species_res_pw_top=species_res_pw_top), here("R/results/h240_3_pw_enrichment_topOnly.xlsx"))
+
+```
+
+
+## finalize
+
+```{r}
+finalizeSkript()
+
+
+```

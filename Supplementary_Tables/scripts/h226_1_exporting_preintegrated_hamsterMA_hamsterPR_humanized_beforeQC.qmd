@@ -1,0 +1,215 @@
+---
+title: "h226_1_exporting_preintegrated_hamsterMA_hamsterPR_humanized_beforeQC"
+format:
+  html:
+    df-print: paged
+    fig-width: 13
+    fig-height: 7
+    code-fold: true
+    code-summary: "Show the code"
+    toc: true
+    toc-location: left
+    toc-depth: 3
+    number-sections: false
+    standalone: true
+    embed-resources: true
+editor: source
+execute:
+  cache: false
+editor_options:
+  chunk_output_type: console
+---
+
+# INITITATE
+
+```{r results='hide', message=FALSE}
+
+#' # INITIIEREN ####
+set.seed(192)
+.libPaths()
+
+all_times <- list()  # store the time for each chunk
+knitr::knit_hooks$set(time_it = local({
+  now <- NULL
+  function(before, options) {
+    if (before) {
+      now <<- Sys.time()
+    } else {
+      res <- difftime(Sys.time(), now, units = "secs")
+      all_times[[options$label]] <<- res
+    }
+  }
+}))
+knitr::opts_chunk$set(
+  tidy = 'styler',
+  fig.width = 10,
+  message = FALSE,
+  warning = FALSE,
+  time_it = TRUE,
+  error = TRUE
+)
+
+library(toolboxH)
+library(Seurat)
+library(SeuratWrappers)
+library(here)
+library(ggplot2)
+library(sva)
+library(patchwork)
+library(BiocParallel)
+library(scDblFinder)
+library(pander)
+  require(ggsankey)
+  require(ggrepel)
+
+  require(dplyr)
+library(future) #https://satijalab.org/celllines/archive/v3.0/future_vignette.html
+options(future.globals.maxSize= 10*1024^3) # to prevent the error
+future.seed=TRUE # to care for proper random seeds
+ncores = 10 # in R conselo, 1, only mclapply is compatible with RSTUDIO
+plan("multicore", workers = ncores)
+
+RNGkind("L'Ecuyer-CMRG") # make random number working for mclapply https://bookdown.org/rdpeng/rprogdatascience/parallel-computation.html#the-parallel-package
+set.seed(192)
+
+knitr::opts_chunk$set(message = FALSE, warning = FALSE)
+```
+
+# Dataimport
+
+```{r}
+# load hamster MA ----
+if(all(c('hamsterMA', 'hamsterMA', 'human') %in% ls())==F) {
+hamsterMA = readRDS(here("R/results/h221_5_qc_hamsterMA_singlestudy.rds"))
+hamsterMA 
+
+hamsterPR = readRDS(here("R/results/h222_2_qc_hamsterPR_singlestudy.rds"))
+hamsterPR
+
+human = readRDS(here("R/results/h220_5_qc_human_singlestudy.rds"))
+human
+}
+```
+
+
+
+# unifying gene names
+```{r results='hide', fig.show='hide'}
+
+orthologues_MA = fread(here("R/results/h217_2_orthologues_measaur_used.txt.gz"), na.strings = c("NA", ""))
+# showNA(orthologues_MA, showAllNoNA = F)
+orthologues_MA2 = orthologues_MA[is.na(human_orthologue_name)==F & seurat_name %in% rownames(hamsterMA)]
+orthologues_MA2[,.N, human_orthologue_by]
+ qlist1 = venn3(rownames(hamsterMA), orthologues_MA$seurat_name, orthologues_MA2$seurat_name)
+orthologues_MA2_orthopur = orthologues_MA2[human_orthologue_by !=  "04:same name uppercase in human"]
+orthologues_MA2_orthopur[,.N, human_orthologue_by]
+ 
+
+orthologues_PR = fread(here("R/results/h216_2_gene_annotation_Phodopus_roborovskii.txt.gz"), na.strings = c("NA", ""))
+orthologues_PR2 = orthologues_PR[is.na(human_orthologue_name)==F & seurat_name %in% rownames(hamsterPR)]
+orthologues_PR2[,.N, human_orthologue_by]
+
+qlist2 = venn3(rownames(hamsterPR), orthologues_PR$seurat_name,orthologues_PR2$seurat_name)
+
+orthologues_PR2_orthopur = orthologues_PR2[human_orthologue_by !=  "03:same name uppercase in human"]
+orthologues_PR2_orthopur[,.N, human_orthologue_by]
+
+
+```
+
+
+
+
+```{r}
+# prioritize for duplicated genes higher expressed gene ----
+av_express_human = AverageExpression(human,assays = "SCT", slot = "count")
+hh(av_express_human$SCT)
+
+
+av_express_human_dt = data.table(name_human = rownames(av_express_human$SCT),
+                                        max_in_human = apply(av_express_human$SCT, 1, max))
+
+orthologues[, max_in_human := av_express_human_dt[match_hk(orthologues$name_human, av_express_human_dt$name_human),max_in_human]]
+
+
+# creating table for renaming gene names ----
+# require(Seurat.utils) #  # from https://github.com/vertesy/Seurat.utils install via devtools::install_github("vertesy/Seurat.utils") or source directly
+RenameGenesSeurat <- function(seurat , renamingtable) { # Replace gene names in different slots of a Seurat object. Run this before integration. Run this before integration. It only changes seurat@assays$RNA@counts, @data and @scale.data.
+  
+  # renamingtable = orthologues_MA2[,.(oldname = seurat_name, newname = human_orthologue_name)]
+  message("Run this before integration. It only changes seurat@assays$RNA@counts, @data and @scale.data.")
+  
+  testthat::test_that("oldname and newname are namenames of renamingtable", expect_true( all(c("oldname", "newname") %in% names(renamingtable))))
+  
+  RNA <- seurat@assays$RNA
+  
+  genenametable = data.table(oldname = rownames(RNA))
+  genenametable[, newname := renamingtable[match_hk(genenametable$oldname, renamingtable$oldname, makeunique = T, importcol = renamingtable$newname), newname]]
+  genenametable[is.na(newname), newname :=oldname]
+  
+  duplicheck = genenametable[allDuplicatedEntries(newname)]
+  if(nrow(duplicheck)>0) {
+    print(duplicheck)
+    stop("duplicates found after trying to rename")
+  }
+  
+  newnames = genenametable$newname
+  
+  if (nrow(RNA) == length(newnames)) {
+    if (length(RNA@counts)) RNA@counts@Dimnames[[1]]            <- newnames
+    if (length(RNA@data)) RNA@data@Dimnames[[1]]                <- newnames
+    if (length(RNA@scale.data)) RNA@scale.data@Dimnames[[1]]    <- newnames
+    # if (length(seurat@meta.data)) rownames(seurat@meta.data)          <- newnames
+  } else {"Unequal gene sets: nrow(RNA) != nrow(newnames)"}
+  seurat@assays$RNA <- RNA
+  return(seurat)
+}
+
+
+hamsterMA2 = RenameGenesSeurat(seurat = hamsterMA, renamingtable = orthologues_MA[,.(oldname = seurat_name, newname = human_orthologue_name)])
+hamsterMA2@active.assay = "RNA"
+
+hamsterPR2 = RenameGenesSeurat(seurat = hamsterPR, renamingtable = orthologues_PR[,.(oldname = seurat_name, newname = human_orthologue_name)])
+hamsterPR2@active.assay = "RNA"
+
+```
+
+
+
+# creating a single object
+
+```{r}
+# remove nonRNA assays
+hamsterMA = DietSeurat(hamsterMA2, layers =  c("counts", "data") , assays = "RNA")
+hamsterMA
+
+hamsterPR = DietSeurat(hamsterPR2, layers =  c("counts", "data") , assays = "RNA")
+hamsterPR
+
+DefaultAssay(human) = "RNA"
+human= DietSeurat(human, layers =  c("counts", "data") , assays = "RNA")
+human
+
+
+rm(hamsterMA2, hamsterPR2)
+gc()
+qlist55 = venn3(rownames(human), 
+                rownames(hamsterMA), 
+                rownames(hamsterPR)
+                )
+
+human$species = "human"
+hamsterMA$species = "hamsterMA"
+hamsterPR$species = "hamsterPR"
+```
+
+# saving hamsters
+```{r}
+saveRDS(hamsterMA, here("R/results/h226_1_seurat_hamsterMA_humanNames.rds"))
+saveRDS(hamsterPR, here("R/results/h226_1_seurat_hamsterPR_humanNames.rds"))
+
+```
+
+```{r}
+finalizeSkript()
+```

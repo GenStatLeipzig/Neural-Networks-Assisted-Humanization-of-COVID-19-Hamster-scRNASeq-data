@@ -1,0 +1,274 @@
+---
+title: "h210_1_batchCorrect.qmd"
+format:
+  html:
+    df-print: paged
+    fig-width: 13
+    fig-height: 7
+    code-fold: true
+    code-summary: "Show the code"
+    toc: true
+    toc-location: left
+    toc-depth: 3
+    number-sections: false
+    standalone: true
+    embed-resources: true
+editor: source
+execute:
+  cache: false
+editor_options:
+  chunk_output_type: console
+---
+
+# >INITITATE
+
+```{r}
+
+#' # INITIIEREN ####
+rm(list = setdiff(ls(), ""))
+.libPaths("~/rpackages/angmar/")
+.libPaths()
+ 
+library(toolboxH)
+library(Seurat)
+library(SeuratWrappers)
+library(here)
+library(ggplot2)
+library(sva)
+
+library(future) #https://satijalab.org/celllines/archive/v3.0/future_vignette.html
+options(future.globals.maxSize= 10*1024^3) # to prevent the error
+future.seed=TRUE # to care for proper random seeds
+ncores = 1 # in R conselo, 1, only mclapply is compatible with RSTUDIO
+plan("multicore", workers = ncores)
+
+RNGkind("L'Ecuyer-CMRG") # make random number working for mclapply https://bookdown.org/rdpeng/rprogdatascience/parallel-computation.html#the-parallel-package
+set.seed(192)
+
+```
+
+# >AIM
+
+batch correct human data for variable 
+# LOAD
+```{r}
+human_pre = readRDS( here("R/data/seurat_COVID19_freshWB-PBMC_cohort2_rhapsody_jonas_FG_2020-08-18.rds"))
+human_pre
+```
+
+
+
+# add consensus celltypenames
+```{r}
+consenusnames = read_excel2(here("R/data/All Datasets PopulationsR.xlsx"), "R")
+consenusnames_hs = consenusnames[dataset == 'humanSchulteRhaps_blood']
+human_pre$uniform_name_overview = consenusnames_hs[match_hk(human_pre$cluster_labels_res.0.8, consenusnames_hs$original_name), uniform_name_overview]
+
+
+```
+# Filter whole blood
+```{r}
+human_pre$cells %>% table()
+human =  subset(human_pre, subset = cells =="Whole_blood")
+human
+
+p_before2 = DimPlot(human, group.by = "uniform_name_overview") + ggtitle("Human, not batch corrected", "uniform_name_overview")
+p_before2
+```
+
+ 
+
+# correct batch
+## genes to correct
+look whether different genes are present in different batches
+```{r}
+humanlist = SplitObject(object = human, split.by = "orig.ident")
+all_genes = lapply(humanlist, rownames)
+
+```
+
+Found folling genes in all batches
+```{r}
+sapply(all_genes, length)
+intersecti = Reduce(intersect, all_genes)
+str(intersecti)
+
+```
+
+Following genes are not in the intersect:
+```{r}
+rownames(human)[rownames(human) %nin% intersecti]
+```
+The difference of 12 is due to the HTO genes
+
+
+
+
+##  batch uncorrected
+
+```{r}
+human
+p_before = DimPlot(human, group.by = c("orig.ident"), shuffle = T) + ggtitle("Human, not batch corrected", "orig.ident")
+
+
+p_before2 = DimPlot(human, group.by = c("cluster_labels_res.0.8"), shuffle = T) + ggtitle("human, not corrected", "cluster_labels_res.0.8")
+(p_before  + p_before2) %>% plotly::ggplotly()
+```
+
+
+## fastmnn
+with standard 2000 features,
+
+```{r fastmnn}
+human$orig.ident %>% table()
+human <- NormalizeData(human)
+human <- FindVariableFeatures(human)
+human <- RunFastMNN(object.list = SplitObject(human, split.by = "orig.ident"))
+human <- RunUMAP(human, reduction = "mnn", dims = 1:30)
+human <- FindNeighbors(human, reduction = "mnn", dims = 1:30)
+human <- FindClusters(human)
+p_mnn = DimPlot(human, group.by = c("orig.ident"), shuffle = T) + ggtitle("Human, MNN corrected", "orig.ident")
+p_before + NoLegend()+( p_mnn + NoLegend())
+
+p_mnn2 = DimPlot(human, group.by = c("cluster_labels_res.0.8"), shuffle = T) + ggtitle("human, mmn corrected", "cluster_labels_res.0.8")
+
+p_before2 + p_mnn2
+```
+
+The corrected assay has the dimension of # variable genes:
+```{r}
+human@assays$mnn.reconstructed %>% dim()
+
+```
+
+
+with standard 2000 features,
+not used, as not every gene was corrected
+
+## COMBAT
+```{r combat}
+barplot(table(human$orig.ident) %>% sort(), main = "Table techn. batches (orig.ident)")
+m = as.data.frame(as.matrix(human@assays$RNA@data))
+com = ComBat(dat=m, batch=human@meta.data$orig.ident, prior.plots=TRUE, par.prior=TRUE)
+```
+
+### genes not in COMBAT
+As Combat does not correct genes with uniform expression within a single batch (all zeros); these should be annotated
+```{r genes_per_batch, fig.width=21, fig.height=14}
+
+genes_per_batch =  lapply(names(humanlist), function(myname) 
+{
+  # myname= names(humanlist)[1]
+  mylist = humanlist[[myname]]
+  n_genes = mylist@assays$RNA@data %>% rowSums()
+  data.table(gene  = names(n_genes), num = n_genes)
+}
+) %>% rbindlist()
+
+genes_per_batch_0 =  genes_per_batch[gene %in% gene[num==0], .(gene,mini = min(num), maxi = max(num)), gene]
+genes_per_batch_0
+some_immungenes_anybatch_0 = grep("^CCL|^IL", genes_per_batch_0$gene, value = T) %>% sort()
+FeaturePlot(human, some_immungenes_anybatch_0[sample(length(some_immungenes_anybatch_0),12)])
+FeaturePlot(human, genes_per_batch_0[order(-maxi), gene][1:12])
+```
+
+plot batch
+```{r combatrebuilt}
+human.combat <- human
+human.combat@assays$RNA@data = Matrix::Matrix(as.matrix(com))
+human.combat <- FindVariableFeatures(human.combat,nfeatures =2000 )
+
+```
+
+ 
+
+# Cluster 
+```{r plotcombat,fig.width=16}
+human.combat = ScaleData(human.combat)
+str(VariableFeatures(human.combat))
+human.combat <- RunPCA(object = human.combat,  do.print = T, npcs = 40)
+
+human.combat <- RunUMAP(human.combat, reduction = "pca", dims = 1:30)
+human.combat <- FindNeighbors(human.combat, reduction = "pca", dims = 1:30)
+human.combat <- FindClusters(human.combat)
+```
+
+# plot
+plot all celltypes with orig.ident and with and without batch adjustment
+
+
+```{r}
+umapdat_combat = data.table(human.combat@reductions$umap@cell.embeddings, keep.rownames = T)
+umapdat_raw = data.table(human_pre[, umapdat_combat$rn]@reductions$umap@cell.embeddings, keep.rownames = T)
+annocells = human.combat@meta.data %>% as.data.table(keep.rownames = T)
+stopifnot(identical(umapdat_combat$rn, umapdat_raw$rn))
+stopifnot(identical(umapdat_combat$rn, annocells$rn))
+
+plotdat = rbind(
+  cbind(annocells[,.(rn,orig.ident, uniform_name_overview, seurat_clusters, who_per_sample)],
+                umapdat_raw[,-"rn"], 
+        batch = "raw"
+        ),
+  cbind(annocells[,.(rn,orig.ident, uniform_name_overview, seurat_clusters, who_per_sample)],
+                umapdat_combat[,-"rn"], 
+        batch = "combat"
+        )
+  )
+
+
+plotdatm = melt(plotdat, id.vars = c("rn", "uniform_name_overview", "seurat_clusters", "batch","UMAP_1", "UMAP_2"), measure.vars = c("who_per_sample", "orig.ident"))
+```
+
+# visualisation via trelliscopt
+in local R
+
+```{r}
+fwrite(plotdatm, here("R/results/h210_1_clusterdat_umap_before_after_combat.txt.gz"))
+```
+
+# als pdf
+```{r}
+
+mycolors = c("red", "green", "blue", "orange", "magenta", "yellow", "black", "gray", "white", "darkred", "brown1", "darkblue", "darkcyan", "darkmagenta", "gold1", "gray10", "gray20", "purple1", "pink1", "darkgreen", "cyan")
+
+allplot = lapply(unique(plotdatm$uniform_name_overview), function(mytissue) {
+  # mytissue = plotdatm$uniform_name_overview[1]
+  myplotdat = plotdatm[uniform_name_overview==mytissue]
+  myn = nrow(myplotdat)
+  myp =  ggplot(myplotdat, aes(UMAP_1, UMAP_2, col = value)) +
+  geom_point(alpha = 0.1, size = 0.5 ) + 
+  facet_wrap(~variable +batch, scales = "free")  +
+  guides(color = guide_legend(override.aes = list(alpha = 1, size = 3))) +
+  scale_color_manual(values = mycolors)+
+    theme_minimal(base_size = 16)
+  myplot = myp + ggtitle(mytissue, subtitle = paste("N = ", myn))
+  plot(myplot)
+  myplot
+}) 
+length(allplot)
+
+pdf(here("R/results/h210_1_clusterdat_umap_before_after_combat.pdf"), height = 9,width =  15)
+lapply(allplot, function(x) plot(x))
+dev.off()
+
+```
+
+
+# SAVE
+
+```{r saving}
+fwrite(genes_per_batch_0, here(paste0("R/results/h210_1_genes_in_any_batch0.txt.gz")))
+saveRDS(human.combat, here(paste0("R/results/h210_1_human_wb_rhaps_combat.rds")))
+
+
+```
+
+
+
+
+# finalize
+
+```{r}
+finalizeSkript()
+
+```

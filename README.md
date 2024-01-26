@@ -27,6 +27,7 @@ This repository contains the scripts accompanying the publication Friedrich VD &
     -   **model_selection**: Scripts for model selection.
     -   **helper_VAE**: Helper functions for VAE disease state matching.
 -   **hamster_scRNAseq**: Scripts for initial provision of Syrian hamster and Roborovski hamster Seurat input files.
+-   **Supplementary_Tables:** Scripts documenting content creation of Supplementary tables
 
 ## Usage
 
@@ -39,3 +40,9 @@ Input and output files of the scripts can be found at **Zenodo XXXXXXX**. An ove
 ## Issues
 
 If you encounter any issues or have questions, please open an issue in the repository.
+
+
+
+## Disclaimer
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
