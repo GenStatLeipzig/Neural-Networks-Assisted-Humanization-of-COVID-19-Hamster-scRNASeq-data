@@ -101,7 +101,7 @@ p3
 
 
 #5C
-data_fig5c = fread(here("Data/h245_7_inputdata_plot_h245_7_overlapping_pathways_no4u5_smaller.txt.gz"))
+data_fig5c = fread("Data/h245_7_inputdata_plot_h245_7_overlapping_pathways_no4u5_smaller.txt.gz")
 
 data_fig5c$human2[data_fig5c$human =="3"] <- "WOS 3"
 data_fig5c$human2[data_fig5c$human =="7"] <- "WOS 7"
