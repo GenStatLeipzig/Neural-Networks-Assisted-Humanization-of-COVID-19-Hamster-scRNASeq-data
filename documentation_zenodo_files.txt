@@ -50,15 +50,15 @@
   - LOK2_v228_1_figure_2_pr.pdf		-> code: */Figure4/LOK2_v228_1_VAE_figure_2.ipynb
 
 - **Figure5_and_FigureS5A,B**
-  - h245_7_eta1_tab.txt								-> code: TO DO
-  - h245_7_inputdata_plot_h245_7_overlapping_pathways_no4u5_smaller.txt.gz	-> code: TO DO
-  - h265_8_plotdata_FDR20_dotplot_effectsizes.txt.gz				-> code: TO DO
+  - h245_7_eta1_tab.txt	and h245_7_inputdata_plot_h245_7_overlapping_pathways_no4u5_smaller.txt.gz	-> code: */Figure1_and_FigureS2/code_inputdata in this order:  h210_1* > h212_2* > h213_2* > h214_2* > h215_2* > h216_2* > h217_2* > h218_3* > h219_3* > h220_5* > h221_5* > h222_2* > h224_3* > h225_5* > h226_1* > h227_2* > h228_3*  followed by scripts in folder */Supplementary_Tables/scripts  > h235_3* > h240_3* > h245_7*
+
+- h265_8_plotdata_FDR20_dotplot_effectsizes.txt.gz				-> code: */Figure1_and_FigureS2/code_inputdata in this order:  h210_1* > h212_2* > h213_2* > h214_2* > h215_2* > h216_2* > h217_2* > h218_3* > h219_3* > h220_5* > h221_5* > h222_2* > h224_3* > h225_5* > h226_1* > h227_2* > h228_3* followed by scripts in folder */Supplementary_Tables/scripts  > h235_3* > h240_3* > h265_8*
 
 - **Figure6_and_FigureS5C**
-  - h265_8_plotdata_top5_genes_same_direction_no4u5.txt.gz			-> code: TO DO
+  - h265_8_plotdata_top5_genes_same_direction_no4u5.txt.gz			-> code: */Figure1_and_FigureS2/code_inputdata in this order:  h210_1* > h212_2* > h213_2* > h214_2* > h215_2* > h216_2* > h217_2* > h218_3* > h219_3* > h220_5* > h221_5* > h222_2* > h224_3* > h225_5* > h226_1* > h227_2* > h228_3* followed by scripts in folder */Supplementary_Tables/scripts  > h235_3* > h240_3* > h265_8*
 
 - **Figure7_FigureS6_and_FigureS7**
-  - h245_4_de_list.xlsx								-> code: TO DO
+  - h245_7_de_list.xlsx									-> code: */Figure1_and_FigureS2/code_inputdata in this order:  h210_1* > h212_2* > h213_2* > h214_2* > h215_2* > h216_2* > h217_2* > h218_3* > h219_3* > h220_5* > h221_5* > h222_2* > h224_3* > h225_5* > h226_1* > h227_2* > h228_3*  followed by scripts in folder */Supplementary_Tables/scripts  > h235_3* > h240_3* > h245_7*
 
 - **FigureS1**
   - h224_3_overlap_genes_all_datasets_plotdat.txt.gz				-> code: TO DO
