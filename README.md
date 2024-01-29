@@ -35,7 +35,7 @@ Navigate to the respective folder to find scripts for generating the figures . I
 
 ## Data
 
-Input and output files of the scripts can be found at **Zenodo 10.5281/zenodo.10580154**. An overview of all files at Zenodo is available in *documentation_zenodo_files.txt*. Raw and processed data of Phodopus roborovskii (Roborovski hamster) can be found at **GEO GSE253845**. Publicly available datasets that were used in this manuscript can be found at **GEO: GSE162208** (Syrian hamsters) and **EGA: EGAS00001004571** (humans) as indicated in the original publications (doi: 10.1038/s41467-021-25030-7; doi.org/10.1016/j.cell.2020.08.001). Processed human whole blood scRNAseq data published by Schulte-Schrepping et al. 2020 (<https://doi.org/10.1016/j.cell.2020.08.001>) was downloaded from the FASTGenomics platform: <https://beta.fastgenomics.org/datasets/detail-dataset-1ad2967be372494a9fdba621610ad3f3#Files>.
+Input and output files of the scripts can be found at **Zenodo: 10.5281/zenodo.10580154**. An overview of all files at Zenodo is available in *documentation_zenodo_files.txt*. Raw and processed data of Phodopus roborovskii (Roborovski hamster) can be found at **GEO GSE253845**. Publicly available datasets that were used in this manuscript can be found at **GEO: GSE162208** (Syrian hamsters) and **EGA: EGAS00001004571** (humans) as indicated in the original publications (doi: 10.1038/s41467-021-25030-7; doi.org/10.1016/j.cell.2020.08.001). Processed human whole blood scRNAseq data published by Schulte-Schrepping et al. 2020 (<https://doi.org/10.1016/j.cell.2020.08.001>) was downloaded from the FASTGenomics platform: <https://beta.fastgenomics.org/datasets/detail-dataset-1ad2967be372494a9fdba621610ad3f3#Files>.
 
 ## Issues
 
