@@ -41,6 +41,11 @@ Input and output files of the scripts can be found at **Zenodo: 10.5281/zenodo.1
 
 If you encounter any issues or have questions, please open an issue in the repository.
 
+## To Dos
+
+- version numbers packages
+- add installation guide, readme  
+
 
 
 ## Disclaimer
