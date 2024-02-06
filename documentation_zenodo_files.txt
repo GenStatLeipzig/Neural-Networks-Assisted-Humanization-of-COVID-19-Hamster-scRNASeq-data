@@ -67,24 +67,24 @@
 	- Roborovski_hamster
 		- **Non_Classical_Monocytes** 		-> code: */Figure3/cross_species_Roborovski_hamster/B01_monos_B_NK_pr.py; */Figure3/cross_species_Roborovski_hamster/B02_pr.py
 		- **NK_Cells**				-> code: */Figure3/cross_species_Roborovski_hamster/B01_monos_B_NK_pr.py; */Figure3/cross_species_Roborovski_hamster/B02_pr.py
-		- **Neutrophils**			-> code: */supplementS3_intermediate/Roborovski_hamster/B01_Neutrophils_pr.py; */Figure3/cross_species_Roborovski_hamster/B02_pr.py
-		- **CD8+_T_Cells**			-> code: */supplementS3_intermediate/Roborovski_hamster/B01_CD4_CD8_pr.py; */Figure3/cross_species_Roborovski_hamster/B02_pr.py
-		- **CD4+_T_Cells**			-> code: */supplementS3_intermediate/Roborovski_hamster/B01_CD4_CD8_pr.py; */Figure3/cross_species_Roborovski_hamster/B02_pr.py
+		- **Neutrophils**			-> code: */FigureS3/Roborovski_hamster/B01_Neutrophils_pr.py; */Figure3/cross_species_Roborovski_hamster/B02_pr.py
+		- **CD8+_T_Cells**			-> code: */FigureS3/Roborovski_hamster/B01_CD4_CD8_pr.py; */Figure3/cross_species_Roborovski_hamster/B02_pr.py
+		- **CD4+_T_Cells**			-> code: */FigureS3/Roborovski_hamster/B01_CD4_CD8_pr.py; */Figure3/cross_species_Roborovski_hamster/B02_pr.py
 		- **B_Cells**				-> code: */Figure3/cross_species_Roborovski_hamster/B01_monos_B_NK_pr.py; */Figure3/cross_species_Roborovski_hamster/B02_pr.py
-		- **Immature_Neutrophils_type1**	-> code: */supplementS3_intermediate/Roborovski_hamster/B01_Immature_Neutrophils_pr_type1_h270.py; */supplementS3_intermediate/Roborovski_hamster/B02_pr_Immature_Neutrophils_type1.py
+		- **Immature_Neutrophils_type1**	-> code: */FigureS3/Roborovski_hamster/B01_Immature_Neutrophils_pr_type1_h270.py; */FigureS3/Roborovski_hamster/B02_pr_Immature_Neutrophils_type1.py
 		- **Classical_Monocytes**		-> code: */Figure3/cross_species_Roborovski_hamster/B01_monos_B_NK_pr.py; */Figure3/cross_species_Roborovski_hamster/B02_pr.py
-		- **decoded_objects_v2** 		-> code: */supplementS3_intermediate/Roborovski_hamster/B05_save_decoded_object.py;  */supplementS3_intermediate/Roborovski_hamster/B05_save_decoded_object_type1.py
+		- **decoded_objects_v2** 		-> code: */FigureS3/Roborovski_hamster/B05_save_decoded_object.py;  */FigureS3/Roborovski_hamster/B05_save_decoded_object_type1.py - used as input for h295_2_calc_spearman_r2_humanisation_perMedian.qmd
 	- Syrian_hamster
-		- **Non_Classical_Monocytes** 		-> code: */supplementS3_intermediate/Syrian_hamster/B01_monos_B_NK_pr.py; */supplementS3_intermediate/Syrian_hamster/B02_ma.py
-		- **NK_Cells**				-> code: */supplementS3_intermediate/Syrian_hamster/B01_monos_B_NK_pr.py; */supplementS3_intermediate/Syrian_hamster/B02_ma.py
+		- **Non_Classical_Monocytes** 		-> code: */FigureS3/Syrian_hamster/B01_monos_B_NK_pr.py; */FigureS3/Syrian_hamster/B02_ma.py
+		- **NK_Cells**				-> code: */FigureS3/Syrian_hamster/B01_monos_B_NK_pr.py; */FigureS3/Syrian_hamster/B02_ma.py
 		- **Neutrophils**			-> code: */Figure3/cross_species_Syrian_hamster/B01_monos_B_NK_pr.py; */Figure3/cross_species_Syrian_hamster/B04_neutro_paper.ipynb
-		- **CD8+_T_Cells**			-> code: */supplementS3_intermediate/Syrian_hamster/B01_CD4_CD8_ma.py; */supplementS3_intermediate/Syrian_hamster/B02_ma.py
-		- **CD4+_T_Cells**			-> code: */supplementS3_intermediate/Syrian_hamster/B01_CD4_CD8_ma.py; */supplementS3_intermediate/Syrian_hamster/B02_ma.py
-		- **B_Cells**				-> code: */supplementS3_intermediate/Syrian_hamster/B01_monos_B_NK_pr.py; */supplementS3_intermediate/Syrian_hamster/B02_ma.py
-		- **Immature_Neutrophils_type1**	-> code: */supplementS3_intermediate/Syrian_hamster/B01_Immature_Neutrophils_type1_h270.py; */supplementS3_intermediate/Syrian_hamster/B02_ma_Immature_Neutrophils_type1.py
-		- **Classical_Monocytes**		-> code: */supplementS3_intermediate/Syrian_hamster/B01_monos_B_NK_pr.py; */supplementS3_intermediate/Syrian_hamster/B02_ma.py
-		- **decoded_objects_v2**		-> code: */supplementS3_intermediate/Syrian_hamster/B05_save_decoded_object.py; */supplementS3_intermediate/Syrian_hamster/B05_save_decoded_object_type1.py
-	- h295_2_ergtabm_spearman.xlsx 			-> code: */Figure3/h295_2_calc_spearman_r2_humanisation_perMedian.qmd
+		- **CD8+_T_Cells**			-> code: */FigureS3/Syrian_hamster/B01_CD4_CD8_ma.py; */FigureS3/Syrian_hamster/B02_ma.py
+		- **CD4+_T_Cells**			-> code: */FigureS3/Syrian_hamster/B01_CD4_CD8_ma.py; */FigureS3/Syrian_hamster/B02_ma.py
+		- **B_Cells**				-> code: */FigureS3/Syrian_hamster/B01_monos_B_NK_pr.py; */FigureS3/Syrian_hamster/B02_ma.py
+		- **Immature_Neutrophils_type1**	-> code: */FigureS3/Syrian_hamster/B01_Immature_Neutrophils_type1_h270.py; */FigureS3/Syrian_hamster/B02_ma_Immature_Neutrophils_type1.py
+		- **Classical_Monocytes**		-> code: */FigureS3/Syrian_hamster/B01_monos_B_NK_pr.py; */FigureS3/Syrian_hamster/B02_ma.py
+		- **decoded_objects_v2**		-> code: */FigureS3/Syrian_hamster/B05_save_decoded_object.py; */FigureS3/Syrian_hamster/B05_save_decoded_object_type1.py - used as input for h295_2_calc_spearman_r2_humanisation_perMedian.qmd
+	- h295_2_ergtabm_spearman.xlsx 			-> code: */FigureS3/h295_2_calc_spearman_r2_humanisation_perMedian.qmd
 
 - **Figure_S4**
 	- Roborovski_hamster
@@ -108,7 +108,7 @@
 
 - **VAE:**
 	- **VAE_input_data**
-
+                - C01_human_Immature_Neutrophils_ID.csv                                 -> */Figure/VAE/input_processing/C01_check_Immature_Neutrophils.ipynb
 		- h228_1_qc_integrated_rpca_cellanno_FILTEREDqc_FILTEREDpureCells.txt 	-> code: */Figure1_and_FigureS2/code_inputdata in this order:  	-> h210_1* > h212_2* > h213_2* > h214_2* > h215_2* > h216_2* > h217_2* > h218_3* > h219_3* > h220_5* > h221_5* > h222_2* > h224_3*   followed by scripts  */VAE/input_processing/h225_4_QC_integrated_clusters_allspecies.qmd and  */VAE/input_processing/h228_1_define_pure_celltypes_per_cluster_for_export.R
 
 		- h228_2_qc_integrated_rpca_cellanno_FILTEREDqc_FILTEREDpureCells.txt		-> code: */Figure1_and_FigureS2/code_inputdata in this order:  	-> h210_1* > h212_2* > h213_2* > h214_2* > h215_2* > h216_2* > h217_2* > h218_3* > h219_3* > h220_5* > h221_5* > h222_2* > h224_3* > h225_5*  followed by script */VAE/input_processing/h228_2_define_pure_celltypes_per_cluster_for_export.R

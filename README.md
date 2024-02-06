@@ -26,6 +26,7 @@ This repository contains the scripts accompanying the publication Friedrich VD &
     -   **input_processing**: Scripts for input processing in VAE pipeline.
     -   **model_selection**: Scripts for model selection.
     -   **helper_VAE**: Helper functions for VAE disease state matching.
+    -   **tool_versions**: Tool versions for the VAE pipeline. VAE pipeline was mainly carried out with tool versions described in *tool_versions_VAE.txt*. Minor steps were carried out with tool versions shown in *tool_versions_local_environment1.txt* and *tool_versions_local_environment2.txt*. In case problems arise when setting up the respective environments, feel free to contact the contributors or open an issue in the repository.
 -   **hamster_scRNAseq**: Scripts for initial provision of Syrian hamster and Roborovski hamster Seurat input files.
 -   **Supplementary_Tables:** Scripts documenting content creation of Supplementary tables
 
@@ -35,11 +36,23 @@ Navigate to the respective folder to find scripts for generating the figures . I
 
 ## Data
 
-Input and output files of the scripts can be found at **Zenodo XXXXXXX**. An overview of all files at Zenodo is available in *documentation_zenodo_files.txt*. Raw and processed data of Phodopus roborovskii (Roborovski hamster) can be found at **GEO GSE253845**. Publicly available datasets that were used in this manuscript can be found at **GEO: GSE162208** (Syrian hamsters) and **EGA: EGAS00001004571** (humans) as indicated in the original publications (doi: 10.1038/s41467-021-25030-7; doi.org/10.1016/j.cell.2020.08.001). Processed human whole blood scRNAseq data published by Schulte-Schrepping et al. 2020 (<https://doi.org/10.1016/j.cell.2020.08.001>) was downloaded from the FASTGenomics platform: <https://beta.fastgenomics.org/datasets/detail-dataset-1ad2967be372494a9fdba621610ad3f3#Files>.
+Input and output files of the scripts can be found at **Zenodo: 10.5281/zenodo.10580154**. An overview of all files at Zenodo is available in *documentation_zenodo_files.txt*. Raw and processed data of Phodopus roborovskii (Roborovski hamster) can be found at **GEO GSE253845**. Publicly available datasets that were used in this manuscript can be found at **GEO: GSE162208** (Syrian hamsters) and **EGA: EGAS00001004571** (humans) as indicated in the original publications (doi: 10.1038/s41467-021-25030-7; doi.org/10.1016/j.cell.2020.08.001). Processed human whole blood scRNAseq data published by Schulte-Schrepping et al. 2020 (<https://doi.org/10.1016/j.cell.2020.08.001>) was downloaded from the FASTGenomics platform: <https://beta.fastgenomics.org/datasets/detail-dataset-1ad2967be372494a9fdba621610ad3f3#Files>.
+
+## Runtime
+Training of VAE models required less than 2 hours runtime on HPC cluster (University Computing Centre Leipzig) with 4 CPUs and 256GB of memory per model for most cell types. Computation times for all other scripts remained within moderate bounds with standard hardware configurations.  
+
+## Required Packages
+Required packages are specified at the beginning of each Python or R script. Packages can be installed via pip, conda, or Bioconductor with moderate installation time.  
+
 
 ## Issues
 
 If you encounter any issues or have questions, please open an issue in the repository.
+
+## To Dos
+
+- version numbers packages
+- add installation guide, readme  
 
 
 
