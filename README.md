@@ -42,7 +42,7 @@ Input and output files of the scripts can be found at **Zenodo: 10.5281/zenodo.1
 Training of VAE models required less than 2 hours runtime on HPC cluster (University Computing Centre Leipzig) with 4 CPUs and 256GB of memory per model for most cell types. Computation times for all other scripts remained within moderate bounds.  
 
 ## Required Packages
-Required packages are specified at the beginning of each Python or R script. 
+Required packages are specified at the beginning of each Python or R script. Packages can be installed via pip, conda, or Bioconductor.  
 
 
 ## Issues
