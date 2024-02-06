@@ -27,7 +27,8 @@ This repository contains the scripts accompanying the publication Friedrich VD &
     -   **model_selection**: Scripts for model selection.
     -   **helper_VAE**: Helper functions for VAE disease state matching.
     -   **tool_versions**: Tool versions for the VAE pipeline.
-              VAE pipeline was mainly carried out with tool versions described in *tool_versions_VAE.txt*. Minor steps were carried out with tool versions shown in *tool_versions_local_environment1.txt* and *tool_versions_local_environment2.txt*.
+
+         VAE pipeline was mainly carried out with tool versions described in *tool_versions_VAE.txt*. Minor steps were carried out with tool versions shown in *tool_versions_local_environment1.txt* and *tool_versions_local_environment2.txt*.
 -   **hamster_scRNAseq**: Scripts for initial provision of Syrian hamster and Roborovski hamster Seurat input files.
 -   **Supplementary_Tables:** Scripts documenting content creation of Supplementary tables
 
