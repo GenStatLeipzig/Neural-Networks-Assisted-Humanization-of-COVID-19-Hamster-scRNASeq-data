@@ -197,3 +197,71 @@ fwrite(orthologuesm4, here("R/results/h217_2_nXm_orthologues_mesaur.txt.gz"), se
 
 
 finalizeSkript()
+
+## R version 4.2.2 (2022-10-31)
+## Platform: x86_64-suse-linux-gnu (64-bit)
+## Running under: openSUSE Leap 15.3
+##
+## Matrix products: default
+## BLAS:   /usr/lib64/R/lib/libRblas.so
+## LAPACK: /usr/lib64/R/lib/libRlapack.so
+##
+## locale:
+##  [1] LC_CTYPE=de_DE.UTF-8       LC_NUMERIC=C
+##  [3] LC_TIME=de_DE.UTF-8        LC_COLLATE=de_DE.UTF-8
+##  [5] LC_MONETARY=de_DE.UTF-8    LC_MESSAGES=de_DE.UTF-8
+##  [7] LC_PAPER=de_DE.UTF-8       LC_NAME=C
+##  [9] LC_ADDRESS=C               LC_TELEPHONE=C
+## [11] LC_MEASUREMENT=de_DE.UTF-8 LC_IDENTIFICATION=C
+##
+## attached base packages:
+## [1] stats     graphics  grDevices utils     datasets  methods   base
+##
+## other attached packages:
+##  [1] future_1.32.0           harmony_0.1.0           Rcpp_1.0.10
+##  [4] patchwork_1.1.2         tidyr_1.3.0             dplyr_1.1.1
+##  [7] ggthemes_4.2.4          ggplot2_3.4.2           Seurat_4.9.9.9042
+## [10] SeuratObject_4.9.9.9084 sp_1.6-0                here_1.0.1
+## [13] toolboxH_0.2.17         eulerr_6.1.1            testthat_3.1.4
+## [16] stringr_1.5.0           scales_1.2.1            readxl_1.4.1
+## [19] RColorBrewer_1.1-3      png_0.1-8               fdrtool_1.2.17
+## [22] R.utils_2.12.0          R.oo_1.25.0             R.methodsS3_1.8.2
+## [25] data.table_1.14.8
+##
+## loaded via a namespace (and not attached):
+##   [1] Rtsne_0.16             colorspace_2.1-0       deldir_1.0-6
+##   [4] ellipsis_0.3.2         ggridges_0.5.4         rprojroot_2.0.3
+##   [7] RcppHNSW_0.4.1         spatstat.data_3.0-1    rstudioapi_0.14
+##  [10] leiden_0.4.3           listenv_0.9.0          ggrepel_0.9.3
+##  [13] RSpectra_0.16-1        fansi_1.0.4            codetools_0.2-18
+##  [16] splines_4.2.2          cachem_1.0.7           knitr_1.42
+##  [19] polyclip_1.10-4        spam_2.9-1             jsonlite_1.8.4
+##  [22] ica_1.0-3              cluster_2.1.4          uwot_0.1.14
+##  [25] spatstat.sparse_3.0-1  sctransform_0.3.5      shiny_1.7.4
+##  [28] compiler_4.2.2         httr_1.4.5             Matrix_1.5-3
+##  [31] fastmap_1.1.1          lazyeval_0.2.2         cli_3.6.1
+##  [34] later_1.3.0            htmltools_0.5.5        tools_4.2.2
+##  [37] igraph_1.4.1           dotCall64_1.0-2        gtable_0.3.3
+##  [40] glue_1.6.2             reshape2_1.4.4         RANN_2.6.1
+##  [43] scattermore_1.0        cellranger_1.1.0       jquerylib_0.1.4
+##  [46] vctrs_0.6.1            nlme_3.1-159           spatstat.explore_3.1-0
+##  [49] progressr_0.13.0       lmtest_0.9-40          spatstat.random_3.1-4
+##  [52] xfun_0.38              globals_0.16.2         brio_1.1.3
+##  [55] mime_0.12              miniUI_0.1.1.1         lifecycle_1.0.3
+##  [58] irlba_2.3.5.1          WriteXLS_6.4.0         goftest_1.2-3
+##  [61] MASS_7.3-58.1          zoo_1.8-11             spatstat.utils_3.0-2
+##  [64] promises_1.2.0.1       parallel_4.2.2         yaml_2.3.7
+##  [67] gridExtra_2.3          reticulate_1.28        pbapply_1.7-0
+##  [70] sass_0.4.5             stringi_1.7.12         fastDummies_1.6.3
+##  [73] rlang_1.1.0            pkgconfig_2.0.3        matrixStats_0.63.0
+##  [76] evaluate_0.20          lattice_0.20-45        tensor_1.5
+##  [79] ROCR_1.0-11            purrr_1.0.1            htmlwidgets_1.6.2
+##  [82] cowplot_1.1.1          tidyselect_1.2.0       parallelly_1.35.0
+##  [85] RcppAnnoy_0.0.20       plyr_1.8.8             magrittr_2.0.3
+##  [88] R6_2.5.1               generics_0.1.3         withr_2.5.0
+##  [91] pillar_1.9.0           fitdistrplus_1.1-8     abind_1.4-5
+##  [94] survival_3.4-0         tibble_3.2.1           future.apply_1.10.0
+##  [97] KernSmooth_2.23-20     utf8_1.2.3             spatstat.geom_3.1-0
+## [100] plotly_4.10.1          rmarkdown_2.21         grid_4.2.2
+## [103] digest_0.6.31          xtable_1.8-4           httpuv_1.6.9
+## [106] munsell_0.5.0          viridisLite_0.4.1      bslib_0.4.2
