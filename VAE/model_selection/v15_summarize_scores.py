@@ -3,7 +3,7 @@ import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-save_folder_pillai = '/work/users/mh823zote/projects/cov/integration/run_VAE_228_1/results/model_selection/pillais_trace/'
+save_folder_pillai = '/work/users/username/projects/cov/integration/run_VAE_228_1/results/model_selection/pillais_trace/'
 
 
 pillai_ma = pd.read_csv(save_folder_pillai + 'v14' + '_' + 'ma' + '_' + 'all_pillai.csv',index_col = 0)
