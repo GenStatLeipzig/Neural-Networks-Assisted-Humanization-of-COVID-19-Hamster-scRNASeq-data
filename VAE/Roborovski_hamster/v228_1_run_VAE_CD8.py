@@ -3,7 +3,7 @@ import numpy as np
 import scgen as scg
 import pandas as pd
 import sys
-sys.path.append("/work/users/mh823zote/projects/cov/integration/analysis")
+sys.path.append("/work/users/username/projects/cov/integration/analysis")
 import helper_VAE as hVAE
 import scipy.sparse
 import scgen
@@ -12,7 +12,7 @@ import seaborn as sns
 import harmonypy as hpy
 import anndata
 
-base = "/work/users/mh823zote/projects/cov/integration" 
+base = "/work/users/username/projects/cov/integration" 
 species = 'pr'
 celltype = 'CD8+_T_Cells'
 save_location = base +'/run_VAE_228_1/results/' + species + '/' + celltype
