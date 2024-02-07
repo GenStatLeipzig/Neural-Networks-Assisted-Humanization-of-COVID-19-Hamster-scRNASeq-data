@@ -3,7 +3,7 @@ import numpy as np
 import scgen as scg
 import pandas as pd
 import sys
-sys.path.append("/work/users/mh823zote/projects/cov/integration/analysis")
+sys.path.append("/work/users/username/projects/cov/integration/analysis")
 import helper_VAE as hVAE
 import scipy.sparse
 import scgen
@@ -86,7 +86,7 @@ celltypes = ['Non_Classical_Monocytes', 'NK_Cells', 'Neutrophils_acurate', 'B_Ce
 
 #ma
 for celltype in celltypes:
-    path = '/work/users/mh823zote/projects/cov/integration/run_VAE_228_1/backup_results/results_v228_1/ma/' + celltype
+    path = '/work/users/username/projects/cov/integration/run_VAE_228_1/backup_results/results_v228_1/ma/' + celltype
     hamster_species = 'ma'
     experiment = '/'  + str(run_dict_ma[celltype])
     lat_all_overview  = prepare_supplement(path,experiment,hamster_species)
@@ -118,7 +118,7 @@ for celltype in celltypes:
     
 #pr
 for celltype in celltypes:
-    path = '/work/users/mh823zote/projects/cov/integration/run_VAE_228_1/backup_results/results_v228_1/pr/' + celltype
+    path = '/work/users/username/projects/cov/integration/run_VAE_228_1/backup_results/results_v228_1/pr/' + celltype
     hamster_species = 'pr'
     experiment = '/'  + str(run_dict_pr[celltype])
     lat_all_overview  = prepare_supplement(path,experiment,hamster_species = 'pr')
