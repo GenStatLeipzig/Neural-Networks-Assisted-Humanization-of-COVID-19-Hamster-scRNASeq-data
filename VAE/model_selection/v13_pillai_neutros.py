@@ -3,7 +3,7 @@ import numpy as np
 import scgen as scg
 import pandas as pd
 import sys
-sys.path.append("/work/users/mh823zote/projects/cov/integration/analysis")
+sys.path.append("/work/users/username/projects/cov/integration/analysis")
 import helper_VAE as hVAE
 import scipy.sparse
 import scgen
@@ -13,14 +13,14 @@ import harmonypy as hpy
 import anndata
 
 pre = 'v13'
-save_folder = '/work/users/mh823zote/projects/cov/integration/run_VAE_228_1/results/model_selection/pillais_trace/'
-base = "/work/users/mh823zote/projects/cov/integration" 
+save_folder = '/work/users/username/projects/cov/integration/run_VAE_228_1/results/model_selection/pillais_trace/'
+base = "/work/users/username/projects/cov/integration" 
 
 celltypes = ['Neutrophils_acurate','Immature_Neutrophils_acurate']
 #celltypes = ['CD4+_T_Cells', 'Classical_Monocytes', 'B_Cells','CD8+_T_Cells', 'NK_Cells', 'Non_Classical_Monocytes']
 all_species = ['ma','pr']
 
-base_results = '/work/users/mh823zote/projects/cov/integration/run_VAE_228_1/results/'
+base_results = '/work/users/username/projects/cov/integration/run_VAE_228_1/results/'
 
 for species in all_species:
     for celltype in celltypes:
