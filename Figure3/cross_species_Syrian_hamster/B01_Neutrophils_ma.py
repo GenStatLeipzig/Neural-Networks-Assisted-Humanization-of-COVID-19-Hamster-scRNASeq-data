@@ -3,7 +3,7 @@ import numpy as np
 import scgen as scg
 import pandas as pd
 import sys
-sys.path.append("/work/users/mh823zote/projects/cov/integration/analysis")
+sys.path.append("/work/users/username/projects/cov/integration/analysis")
 import helper_VAE as hVAE
 import scipy.sparse
 import scgen
@@ -14,7 +14,7 @@ import anndata
 import random
 import os
 
-base = "/work/users/mh823zote/projects/cov/integration" 
+base = "/work/users/username/projects/cov/integration" 
 species = 'ma'
 object_number = '228_1'
 script_number = 'B01'
