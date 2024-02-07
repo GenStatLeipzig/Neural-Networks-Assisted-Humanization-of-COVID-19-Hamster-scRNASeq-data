@@ -3,7 +3,7 @@ import numpy as np
 import scgen as scg
 import pandas as pd
 import sys
-sys.path.append("/work/users/mh823zote/projects/cov/integration/analysis")
+sys.path.append("/work/users/username/projects/cov/integration/analysis")
 import helper_VAE as hVAE
 import scipy.sparse
 import scgen
@@ -14,7 +14,7 @@ import anndata
 import random
 import os
 
-base_pr = "/work/users/mh823zote/projects/cov/integration/run_proof_principle_228_1/backup/pr/" 
+base_pr = "/work/users/username/projects/cov/integration/run_proof_principle_228_1/backup/pr/" 
 species = 'pr'
 object_number = '228_1'
 script_number = 'B02'
