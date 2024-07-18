@@ -283,6 +283,10 @@ ggplot(countis_ind[celltype =="Platelet" ], aes(severity2, proportion, fill= cel
                 position =  position_dodge(width = 0.9), color = "black", linewidth = 0.7, width = 0.4) +
   geom_point( alpha = 0.7, col = "black", size = 3)  + facet_wrap(~species, scales = "free_x" , nrow = 1) + scale_y_continuous(labels = label_percent(), expand = c(0, 0), breaks = pretty_breaks(8)) + guides(fill = "none") + ylab("Platelet") + scale_x_discrete(guide = guide_axis(angle = -45)) + theme_classic(base_size = 14) + coord_cartesian(ylim = c(0, 0.4))
 
+#NEW Supllemental Figure 2
+
+DotPlot(Blood_merged, features = c("CD14", "CCR2", "CX3CR1", "FLT3","CXCR2", "NKG7", "CD3E", "CD4","CD8A", "CD79B", "PRDM1", "PPBP", "PF4", "TOP2A"))+ theme(axis.text.x = element_text(angle = 90, vjust = 0.4, hjust = 1))
+                           
 sessionInfo()
 # R version 4.3.0 (2023-04-21 ucrt)
 # Platform: x86_64-w64-mingw32/x64 (64-bit)
